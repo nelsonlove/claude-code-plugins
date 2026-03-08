@@ -52,7 +52,8 @@ IFS=',' read -ra tag_array <<< "$tags"
 primary_tag="${tag_array[0]:-misc}"
 
 # Sanitize source for filename
-safe_source=$(printf '%s' "$source_name" | tr -c 'a-zA-Z0-9_-' '-')
+safe_source=$(printf '%s' "$source_name" | tr -c 'a-zA-Z0-9_-' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//')
+safe_source="${safe_source:-unknown}"
 
 filename="${ts_file}_${primary_tag}_${safe_source}.md"
 filepath="${INBOX_DIR}/${filename}"

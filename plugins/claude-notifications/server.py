@@ -44,6 +44,7 @@ def make_filename(tags, source):
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
     primary_tag = tags[0] if tags else "misc"
     safe_source = re.sub(r'[^a-zA-Z0-9_-]', '-', source)
+    safe_source = re.sub(r'-+', '-', safe_source).strip('-') or 'unknown'
     return f"{ts}_{primary_tag}_{safe_source}.md"
 
 
@@ -294,7 +295,18 @@ for line in sys.stdin:
     line = line.strip()
     if not line:
         continue
+    parsed = None
     try:
-        handle(json.loads(line))
-    except Exception:
-        pass
+        parsed = json.loads(line)
+        handle(parsed)
+    except json.JSONDecodeError:
+        pass  # Malformed JSON — can't determine id, skip
+    except Exception as e:
+        # If the message had an id, send an error response
+        msg_id = parsed.get("id") if parsed else None
+        if msg_id is not None:
+            send({
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {"code": -32603, "message": str(e)},
+            })
