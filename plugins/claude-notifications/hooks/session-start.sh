@@ -9,6 +9,15 @@ STATE_DIR="$HOME/.claude/inbox-state"
 # Ensure dirs exist
 mkdir -p "$INBOX_DIR" "$STATE_DIR"
 
+# Prune stale state files from dead sessions
+for sf in "$STATE_DIR"/*; do
+  [ -f "$sf" ] || continue
+  pid=$(basename "$sf")
+  if ! kill -0 "$pid" 2>/dev/null; then
+    rm -f "$sf"
+  fi
+done
+
 # Count pending .md files
 count=$(find "$INBOX_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
 
