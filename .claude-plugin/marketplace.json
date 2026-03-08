@@ -22,6 +22,15 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "steipete-scripts",
+      "source": "./plugins/steipete-scripts",
+      "description": "Skills ported from steipete/agent-scripts. Attribution: Peter Steinberger (@steipete).",
+      "version": "0.0.1",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }
