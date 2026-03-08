@@ -1,0 +1,8 @@
+{
+  "name": "claude-notifications",
+  "version": "0.1.0",
+  "description": "Persistent cross-session notification inbox for automated agents and cron jobs.",
+  "author": {
+    "name": "Nelson Love"
+  }
+}
