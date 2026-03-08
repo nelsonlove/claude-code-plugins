@@ -1,0 +1,7 @@
+{
+  "name": "session-name",
+  "description": "Set a human-readable name for the current Claude session, displayed in the status line.",
+  "author": {
+    "name": "nelson"
+  }
+}
