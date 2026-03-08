@@ -1,0 +1,7 @@
+{
+  "dayone-cli": {
+    "type": "stdio",
+    "command": "/usr/local/bin/dayone",
+    "args": ["mcp"]
+  }
+}
