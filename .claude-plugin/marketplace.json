@@ -31,6 +31,33 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "jd-workflows",
+      "source": "./plugins/jd-workflows",
+      "description": "Skills and workflows for the Johnny Decimal filing system: capture triage, file organization, and sorting.",
+      "version": "1.2.0",
+      "author": {
+        "name": "Nelson Love"
+      }
+    },
+    {
+      "name": "backlog",
+      "source": "./plugins/backlog",
+      "description": "Backlog.md task tracker — manage markdown-based backlogs from Claude Code via MCP.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Nelson Love"
+      }
+    },
+    {
+      "name": "homebrew-audit",
+      "source": "./plugins/homebrew-audit",
+      "description": "Audit and triage Homebrew packages via an org-mode workflow with babel action blocks.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }

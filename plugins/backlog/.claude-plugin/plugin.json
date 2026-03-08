@@ -1,0 +1,7 @@
+{
+  "name": "backlog",
+  "description": "Backlog.md task tracker — manage markdown-based backlogs from Claude Code via MCP.",
+  "author": {
+    "name": "nelson"
+  }
+}

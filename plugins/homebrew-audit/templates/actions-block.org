@@ -1,0 +1,72 @@
+* Actions
+** Summary
+Count packages by triage state.
+
+#+begin_src elisp :results value raw
+(let ((keep 0) (drop 0) (maybe 0) (dep 0))
+  (org-map-entries
+   (lambda ()
+     (pcase (org-get-todo-state)
+       ("KEEP"  (cl-incf keep))
+       ("DROP"  (cl-incf drop))
+       ("MAYBE" (cl-incf maybe))
+       ("DEP"   (cl-incf dep))))
+   nil 'file)
+  (format "| State | Count |\n|-------+-------|\n| KEEP  | %5d |\n| DROP  | %5d |\n| MAYBE | %5d |\n| DEP   | %5d |\n|-------+-------|\n| Total | %5d |"
+          keep drop maybe dep (+ keep drop maybe dep)))
+#+end_src
+
+** Generate uninstall script
+Collects everything marked =DROP= and emits the shell commands.
+
+#+begin_src elisp :results output :wrap "src shell :tangle /tmp/brew-uninstall.sh"
+(princ "#!/bin/bash\n# Auto-generated from brewfile-audit.org\n# Review before running!\nset -e\n\n")
+(org-map-entries
+ (lambda ()
+   (when (string= (org-get-todo-state) "DROP")
+     (let ((pkg  (org-entry-get nil "PACKAGE"))
+           (type (org-entry-get nil "TYPE")))
+       (when pkg
+         (pcase type
+           ("tap"  (princ (format "brew untap %s\n" pkg)))
+           ("cask" (princ (format "brew uninstall --cask %s\n" pkg)))
+           ("mas"  (let ((id (org-entry-get nil "MAS_ID")))
+                     (when id (princ (format "# mas: %s (id %s) — uninstall manually from Launchpad\n" pkg id)))))
+           ("go"   (princ (format "# go: %s — uninstall manually\n" pkg)))
+           ("uv"   (princ (format "uv tool uninstall %s\n" pkg)))
+           (_      (princ (format "brew uninstall %s\n" pkg))))))))
+ nil 'file)
+#+end_src
+
+** Generate clean Brewfile
+Collects everything marked =KEEP= into a fresh Brewfile for your dotfiles.
+
+#+begin_src elisp :results output :wrap "src conf :tangle ~/.config/Brewfile.clean"
+(let ((taps nil) (brews nil) (casks nil) (mass nil) (others nil))
+  (org-map-entries
+   (lambda ()
+     (when (string= (org-get-todo-state) "KEEP")
+       (let ((pkg  (org-entry-get nil "PACKAGE"))
+             (type (org-entry-get nil "TYPE")))
+         (when pkg
+           (pcase type
+             ("tap"  (push (format "tap \"%s\"" pkg) taps))
+             ("cask" (push (format "cask \"%s\"" pkg) casks))
+             ("mas"  (let ((id (org-entry-get nil "MAS_ID")))
+                       (when id (push (format "mas \"%s\", id: %s" pkg id) mass))))
+             ("go"   (push (format "go \"%s\"" pkg) others))
+             ("uv"   (push (format "uv \"%s\"" pkg) others))
+             (_      (push (format "brew \"%s\"" pkg) brews)))))))
+   nil 'file)
+  (princ (format "# Brewfile — generated from brewfile-audit.org\n# %s\n\n" (format-time-string "%Y-%m-%d")))
+  (dolist (x (nreverse taps))   (princ (format "%s\n" x)))
+  (princ "\n")
+  (dolist (x (nreverse brews))  (princ (format "%s\n" x)))
+  (princ "\n")
+  (dolist (x (nreverse casks))  (princ (format "%s\n" x)))
+  (princ "\n")
+  (dolist (x (nreverse mass))   (princ (format "%s\n" x)))
+  (when others
+    (princ "\n")
+    (dolist (x (nreverse others)) (princ (format "%s\n" x)))))
+#+end_src

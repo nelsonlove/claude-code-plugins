@@ -1,0 +1,26 @@
+#+TITLE: Brewfile Audit
+#+AUTHOR: Nelson + Claude
+#+DATE: %DATE%
+#+TODO: KEEP(k) MAYBE(m) | DROP(d) DEP(p)
+#+COLUMNS: %50ITEM %TODO %12INSTALLED(Installed) %8TYPE(Type)
+#+STARTUP: overview
+#+TAGS: { brew(b) cask(c) mas(a) tap(t) go(g) uv(u) }
+
+* How to use this file
+
+Toggle states: =S-left= / =S-right= or =C-c C-t=
+
+| Key | State   | Meaning                                |
+|-----+---------+----------------------------------------|
+| k   | =KEEP=  | Install on next machine                |
+| m   | =MAYBE= | Decide later                           |
+| d   | =DROP=  | Uninstall now                          |
+| p   | =DEP=   | Dependency — managed by Homebrew        |
+
+Other commands:
+- =C-c C-x C-c= — Column view (spreadsheet-style overview)
+- =C-c \= — Filter by tag (~brew~, ~cask~, ~mas~)
+- =C-c / t= — Sparse tree by TODO state
+- =C-c C-c= on a =src= block — Execute it
+
+When done triaging, go to [[*Actions]] and run the babel blocks.
