@@ -1,18 +1,27 @@
 {
-    "name": "claude-code-plugins-mac",
-    "owner": {
-        "name": "Nelson Love",
-        "email": "nelson@nelson.love"
+  "name": "claude-code-plugins-mac",
+  "owner": {
+    "name": "Nelson Love",
+    "email": "nelson@nelson.love"
+  },
+  "plugins": [
+    {
+      "name": "mail",
+      "source": "./plugins/mail",
+      "description": "Mail handling with himalaya",
+      "version": "0.0.1",
+      "author": {
+        "name": "Nelson Love"
+      }
     },
-    "plugins": [
-        {
-            "name": "mail",
-            "source": "./plugins/mail",
-            "description": "Mail handling with himalaya",
-            "version": "0.0.1",
-            "author": {
-                "name": "Nelson Love"
-            }
-        }
-    ]
+    {
+      "name": "session-name",
+      "source": "./plugins/session-name",
+      "description": "Set a human-readable name for the current Claude session, displayed in the status line.",
+      "version": "1.0.1",
+      "author": {
+        "name": "Nelson Love"
+      }
+    }
+  ]
 }
