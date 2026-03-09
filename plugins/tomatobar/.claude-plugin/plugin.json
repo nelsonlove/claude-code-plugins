@@ -1,0 +1,7 @@
+{
+  "name": "tomatobar",
+  "description": "Control TomatoBar Pomodoro timer and query session state from Claude Code.",
+  "author": {
+    "name": "nelson"
+  }
+}
