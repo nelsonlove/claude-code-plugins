@@ -5,10 +5,10 @@
 - [x] Upstream: sort params in db.py
 - [x] Upstream: delete/move JXA operations
 
-## In Progress
-- [ ] MCP server (server.py)
-- [ ] Skills (note-operations, note-triage)
-- [ ] Command (/notes-triage)
+## Done (cont.)
+- [x] MCP server (server.py) — 8 tools
+- [x] Skills (note-operations, note-triage)
+- [x] Command (/notes-triage)
 
 ## Future
 - [ ] Batch delete MCP tool (multiple notes at once)
