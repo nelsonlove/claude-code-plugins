@@ -1,0 +1,8 @@
+{
+  "name": "marked-preview",
+  "version": "0.1.0",
+  "description": "Generate markdown and preview in Marked 2. Rich formatted output outside the terminal.",
+  "author": {
+    "name": "Nelson Love"
+  }
+}
