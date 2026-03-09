@@ -3,6 +3,12 @@
 # On session end, spawn a background Claude to summarize the transcript
 # and append an activity log entry to CLAUDE.org if notable work was done.
 
+# Guard against infinite recursion: the background claude call is itself a
+# session, so its SessionEnd would re-trigger this hook forever.
+if [ -n "$CLAUDE_SESSION_LOGGER" ]; then
+  exit 0
+fi
+
 LOG_FILE="$HOME/Desktop/CLAUDE.org"
 INPUT=$(cat)
 TRANSCRIPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('transcript_path',''))" 2>/dev/null)
@@ -12,7 +18,7 @@ if [ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]; then
 fi
 
 (
-  claude --print --model sonnet -p "You are a session logger. Read the session transcript below and decide if anything notable was done — files created or modified, features built, configs changed, bugs fixed, content organized, etc.
+  CLAUDE_SESSION_LOGGER=1 claude --print --model sonnet -p "You are a session logger. Read the session transcript below and decide if anything notable was done — files created or modified, features built, configs changed, bugs fixed, content organized, etc.
 
 If YES, append a single org-mode entry to the file at:
   $LOG_FILE
