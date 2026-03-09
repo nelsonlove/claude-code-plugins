@@ -1,5 +1,6 @@
 {
   "name": "tomatobar",
+  "version": "1.0.0",
   "description": "Control TomatoBar Pomodoro timer and query session state from Claude Code.",
   "author": {
     "name": "nelson"

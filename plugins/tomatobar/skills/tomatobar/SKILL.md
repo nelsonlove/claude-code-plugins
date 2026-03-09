@@ -40,7 +40,7 @@ Each line is a JSON event. Two event types:
 
 ```bash
 LOG="$HOME/Library/Containers/com.github.ivoronin.TomatoBar/Data/Library/Caches/TomatoBar.log"
-grep '"type":"transition"' "$LOG" | tail -1 | python3 -c "import sys,json; e=json.loads(sys.stdin.read()); print(e['toState'], e['timestamp'])"
+grep '"type":"transition"' "$LOG" 2>/dev/null | tail -1 | python3 -c "import sys,json; e=json.loads(sys.stdin.read()); print(e['toState'], e['timestamp'])" 2>/dev/null || echo "unknown"
 ```
 
 ### Today's pomodoro count
