@@ -259,15 +259,45 @@ def heuristic_verdict(name, pkg_type, desc, on_request):
     return ("MAYBE", f"review — {desc[:60] if desc else 'no description'}")
 
 
+def get_currently_installed():
+    """Get sets of currently installed formulae, casks, and taps."""
+    result = subprocess.run(
+        ["brew", "list", "--formula", "-1"],
+        capture_output=True, text=True
+    )
+    formulae = set(result.stdout.strip().split("\n")) if result.stdout.strip() else set()
+
+    result = subprocess.run(
+        ["brew", "list", "--cask", "-1"],
+        capture_output=True, text=True
+    )
+    casks = set(result.stdout.strip().split("\n")) if result.stdout.strip() else set()
+
+    result = subprocess.run(["brew", "tap"], capture_output=True, text=True)
+    taps = set(result.stdout.strip().split("\n")) if result.stdout.strip() else set()
+
+    return formulae, casks, taps
+
+
 def build_entries(brew_info, on_request, taps, mas_apps, existing):
-    """Build list of entry dicts from brew data."""
+    """Build list of entry dicts from brew data.
+
+    Cross-references with currently installed packages:
+    - Previously triaged packages that are no longer installed get auto-marked DROP
+    - New packages not in existing triage get heuristic annotations
+    """
     entries = []
+    installed_formulae, installed_casks, installed_taps = get_currently_installed()
 
     # Taps
     for tap_name in sorted(taps):
         prev = existing.get(tap_name, {})
         state = prev.get("state", "MAYBE")
-        note = prev.get("note", f"review this tap")
+        note = prev.get("note", "review this tap")
+        # Auto-mark DROP if previously triaged but no longer tapped
+        if prev and tap_name not in installed_taps:
+            state = "DROP"
+            note = prev.get("note", "") or "no longer tapped"
         entries.append({
             "name": tap_name,
             "type": "tap",
@@ -289,6 +319,10 @@ def build_entries(brew_info, on_request, taps, mas_apps, existing):
         if prev:
             state = prev["state"]
             note = prev["note"] or desc
+            # Auto-mark DROP if previously triaged but no longer installed
+            if name not in installed_formulae and state not in ("DROP", "DEP"):
+                state = "DROP"
+                note = prev.get("note", "") or "no longer installed"
         else:
             state, note = heuristic_verdict(name, "brew", desc, is_on_request)
 
@@ -312,6 +346,10 @@ def build_entries(brew_info, on_request, taps, mas_apps, existing):
         if prev:
             state = prev["state"]
             note = prev["note"] or desc
+            # Auto-mark DROP if previously triaged but no longer installed
+            if name not in installed_casks and state not in ("DROP", "DEP"):
+                state = "DROP"
+                note = prev.get("note", "") or "no longer installed"
         else:
             state, note = heuristic_verdict(name, "cask", desc, True)
 
