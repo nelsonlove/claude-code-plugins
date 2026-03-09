@@ -72,7 +72,7 @@
       "name": "homebrew-audit",
       "source": "./plugins/homebrew-audit",
       "description": "Audit and triage Homebrew packages via an org-mode workflow with babel action blocks.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
       }
@@ -90,6 +90,15 @@
       "name": "clawtunes",
       "source": "./plugins/clawtunes",
       "description": "Apple Music control and intelligent playlist curation via clawtunes CLI.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
+    },
+    {
+      "name": "apple-notes",
+      "source": "./plugins/apple-notes",
+      "description": "Apple Notes integration — read, create, search, and triage notes via MCP.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
