@@ -12,6 +12,17 @@ Control the TomatoBar Pomodoro timer.
 
 Parse the argument (default to "status" if empty).
 
+### Ensure TomatoBar is running
+
+Before any action, check if TomatoBar is running and launch it if not:
+
+```bash
+if ! pgrep -x TomatoBar >/dev/null; then
+  open -a TomatoBar
+  sleep 2  # give it time to register URL scheme
+fi
+```
+
 ### start / stop
 Run: `open tomatobar://startStop`
 Report back what you did ("Started timer" or "Stopped timer" — you can check state first to know which).

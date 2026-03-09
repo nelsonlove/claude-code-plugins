@@ -7,6 +7,17 @@ description: "Query and control TomatoBar Pomodoro timer. Use when the user ment
 
 TomatoBar is a macOS menu bar Pomodoro timer. It exposes a URL scheme for control and a JSON log for state.
 
+## Ensure running
+
+Before any control or state query, check if TomatoBar is running:
+
+```bash
+if ! pgrep -x TomatoBar >/dev/null; then
+  open -a TomatoBar
+  sleep 2
+fi
+```
+
 ## Control
 
 ```bash
