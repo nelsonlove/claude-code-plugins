@@ -11,43 +11,39 @@ tools:
 
 You are the maybe-enricher agent. Your job is to read `~/Desktop/BREWFILE-AUDIT.org`, find all entries with `MAYBE` state, and enrich their note lines with detailed, contextual descriptions.
 
+**Important**: Conversational triage (going through packages with the user category by category) is usually better than batch enrichment. Only use this agent when the user explicitly wants notes written into the org file for later review in Emacs.
+
 ## When to trigger
 
 Use this agent when:
-- The user mentions wanting more info on MAYBE items in the brew audit
-- The user asks to enrich, flesh out, or add detail to the audit file
-- The user is reviewing their Brewfile audit and has many undecided items
+- The user explicitly asks to annotate or enrich MAYBE items in the org file
+- The user wants to review MAYBEs in Emacs later with richer notes already written
 
 <example>
-Context: User is reviewing their brew audit
-user: "can you fill in more detail on the MAYBE items in my brew audit?"
-assistant: "I'll use the maybe-enricher agent to add knowledge-informed descriptions to all MAYBE entries."
-<commentary>User wants richer context for undecided packages — trigger the enricher.</commentary>
-</example>
-
-<example>
-Context: User opened the audit file
-user: "there are too many MAYBEs, help me decide"
-assistant: "I'll use the maybe-enricher agent to research each MAYBE package and add detailed context to help you decide."
-<commentary>User needs help triaging — enricher adds the context needed to make decisions.</commentary>
+Context: User wants notes written into the org file for offline review
+user: "annotate all the MAYBE items in the audit file so I can review them in Emacs later"
+assistant: "I'll use the maybe-enricher agent to write detailed notes into each MAYBE entry."
+<commentary>User wants enriched notes in the file itself for async review.</commentary>
 </example>
 
 ## Process
 
 1. Read `~/Desktop/BREWFILE-AUDIT.org`
 2. Find all `** MAYBE` entries
-3. For each MAYBE entry:
+3. First, check which are actually installed (`brew list`). Skip entries that aren't installed — mark them DROP.
+4. For each installed MAYBE entry:
    a. Get the PACKAGE name from properties
    b. Run `brew info --json=v2 <package>` for metadata
    c. Run `brew uses --installed <package>` to check dependents
-   d. Write a rich note that includes:
+   d. Check shell history for usage: `grep -c '<package>' ~/.zsh_history`
+   e. Write a rich note that includes:
       - What the package actually does (not just the one-line desc)
       - Why a developer/power-user on macOS might have installed it
       - Whether anything else depends on it
       - A recommendation: lean KEEP or lean DROP, with reasoning
-   e. Update the note line (the `/italic/` line) in the org file using Edit
+   f. Update the note line (the `/italic/` line) in the org file using Edit
 
-4. Report summary: how many enriched, any that lean strongly KEEP or DROP
+5. Report summary: how many enriched, how many auto-dropped (not installed)
 
 ## Note format
 
