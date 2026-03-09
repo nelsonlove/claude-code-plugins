@@ -1,0 +1,8 @@
+{
+  "name": "claude-tone",
+  "version": "0.1.0",
+  "description": "Unique pentatonic notification tone per session. Plays on Stop and Notification events.",
+  "author": {
+    "name": "Nelson Love"
+  }
+}
