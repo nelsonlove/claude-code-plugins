@@ -1,0 +1,46 @@
+#!/bin/bash
+# Play a unique pentatonic tone per Claude Code session.
+# Usage: claude-tone [session-id]
+#        claude-tone --generate  (pre-generate all 12 cached tones)
+#
+# Part of the claude-tone plugin. Tones are cached in ~/.cache/claude-tones/
+# and auto-generated from the base sound on first use.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
+BASE_SOUND="${PLUGIN_ROOT}/resources/StartupMacLC.wav"
+CACHE_DIR="$HOME/.cache/claude-tones"
+OFFSETS=(-5 -3 0 2 4 7 9 12 14 16 19 21)
+
+generate() {
+  if [ ! -f "$BASE_SOUND" ]; then
+    echo "Base sound not found: $BASE_SOUND" >&2
+    exit 1
+  fi
+  mkdir -p "$CACHE_DIR"
+  for i in "${!OFFSETS[@]}"; do
+    cents=$(( OFFSETS[i] * 100 ))
+    sox -q "$BASE_SOUND" "$CACHE_DIR/tone-$i.wav" pitch "$cents" gain -2
+  done
+}
+
+if [ "$1" = "--generate" ]; then
+  generate
+  echo "Generated ${#OFFSETS[@]} tones in $CACHE_DIR"
+  exit 0
+fi
+
+id="${1:-$CLAUDE_SESSION_ID}"
+if [ -z "$id" ]; then
+  echo "Usage: claude-tone <session-id>" >&2
+  exit 1
+fi
+
+hex=$(echo -n "$id" | md5 | cut -c1-2)
+dec=$((16#$hex))
+index=$((dec % 12))
+
+# Auto-generate cache if missing
+[ -f "$CACHE_DIR/tone-$index.wav" ] || generate
+
+afplay "$CACHE_DIR/tone-$index.wav"

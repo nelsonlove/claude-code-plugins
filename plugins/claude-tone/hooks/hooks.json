@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); ${CLAUDE_PLUGIN_ROOT}/bin/claude-tone \"$(echo \"$input\" | jq -r '.session_id // empty')\"",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); ${CLAUDE_PLUGIN_ROOT}/bin/claude-tone \"$(echo \"$input\" | jq -r '.session_id // empty')\" & terminal-notifier -title \"$(echo \"$input\" | jq -r '.title // \"Claude Code\"')\" -message \"$(echo \"$input\" | jq -r '.message // \"Task complete\"')\" -sound default -group claude-notify 2>/dev/null; true",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
