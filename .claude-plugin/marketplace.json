@@ -85,6 +85,15 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "clawtunes",
+      "source": "./plugins/clawtunes",
+      "description": "Apple Music control and intelligent playlist curation via clawtunes CLI.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }
