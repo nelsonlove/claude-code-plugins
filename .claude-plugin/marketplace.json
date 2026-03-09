@@ -121,6 +121,15 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "marked-preview",
+      "source": "./plugins/marked-preview",
+      "description": "Generate markdown and preview in Marked 2. Rich formatted output outside the terminal.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }
