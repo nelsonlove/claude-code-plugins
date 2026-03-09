@@ -1,7 +1,7 @@
 {
-  "omnifocus-mcp": {
-    "type": "stdio",
-    "command": "node",
-    "args": ["/Users/nelson/repos/omnifocus-mcp/src/index.js"]
+  "mcpServers": {
+    "omnifocus-mcp": {
+      "command": "omnifocus-mcp"
+    }
   }
 }
