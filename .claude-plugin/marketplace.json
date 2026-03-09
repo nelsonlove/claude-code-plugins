@@ -112,6 +112,15 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "tomatobar",
+      "source": "./plugins/tomatobar",
+      "description": "Control TomatoBar Pomodoro timer and query session state from Claude Code.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }
