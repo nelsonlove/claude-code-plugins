@@ -10,7 +10,7 @@
         ]
       }
     ],
-    "SessionEnd": [
+    "_SessionEnd_DISABLED": [
       {
         "hooks": [
           {
