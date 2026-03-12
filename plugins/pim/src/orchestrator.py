@@ -174,8 +174,22 @@ class Orchestrator:
         if native_id is None:
             raise ValueError(f"Node not found: {pim_uri}")
         risk = self._classify_risk("close_node", changes={"mode": mode})
+        if risk == RISK_HIGH:
+            log_id = self._log_decision(
+                "close_node", pim_uri, risk,
+                approval="pending_confirmation",
+                evidence={"mode": mode, "operation": "close_node", "target": pim_uri},
+            )
+            return {
+                "status": "pending_confirmation",
+                "log_id": log_id,
+                "operation": "close_node",
+                "target": pim_uri,
+                "mode": mode,
+            }
         self._log_decision("close_node", pim_uri, risk, evidence={"mode": mode})
         adapter.close_node(native_id, mode)
+        return None
 
     def create_edge(self, source: str, target: str, edge_type: str, metadata: dict | None = None) -> Edge:
         self._validate_edge_type(edge_type)
@@ -202,6 +216,37 @@ class Orchestrator:
     def close_edge(self, edge_id: str) -> None:
         self._log_decision("close_edge", edge_id, RISK_LOW)
         self.internal.close_edge(edge_id)
+
+    def confirm_operation(self, log_id: str) -> dict:
+        """Execute a pending high-risk operation after user confirmation."""
+        row = self.conn.execute(
+            "SELECT * FROM decision_log WHERE id = ? AND approval = 'pending_confirmation'",
+            (log_id,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"No pending operation found for log_id: {log_id!r}")
+        entry = dict(row)
+        evidence = json.loads(entry["evidence"]) if entry["evidence"] else {}
+        operation = evidence.get("operation")
+        target = evidence.get("target")
+
+        # Execute the stored operation
+        if operation == "close_node":
+            mode = evidence.get("mode")
+            parts = parse_uri(target)
+            adapter = self.adapters.get(parts["adapter"], self.internal)
+            native_id = adapter.reverse_resolve(target)
+            if native_id is None:
+                raise ValueError(f"Node not found: {target}")
+            adapter.close_node(native_id, mode)
+
+        # Mark as confirmed
+        self.conn.execute(
+            "UPDATE decision_log SET approval = 'confirmed' WHERE id = ?",
+            (log_id,),
+        )
+        self.conn.commit()
+        return {"status": "confirmed", "log_id": log_id, "operation": operation, "target": target}
 
     def get_decision_log(self, target: str | None = None, operation: str | None = None,
                          limit: int = 50) -> list[dict]:

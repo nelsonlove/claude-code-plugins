@@ -105,15 +105,33 @@ def create_server() -> FastMCP:
     def pim_close_node(
         id: str,
         mode: str = "archive",
-    ) -> str:
+    ) -> dict | str:
         """Close a node — complete, archive, cancel, or delete.
+
+        Delete mode is high-risk and requires confirmation via pim_confirm.
 
         Args:
             id: PIM URI of the node
             mode: One of: complete, archive, cancel, delete
         """
-        orch.close_node(id, mode)
+        result = orch.close_node(id, mode)
+        if result and result.get("status") == "pending_confirmation":
+            return result
         return f"Node {id} closed with mode: {mode}"
+
+    @mcp.tool()
+    def pim_confirm(
+        log_id: str,
+    ) -> dict:
+        """Confirm and execute a pending high-risk operation.
+
+        When a high-risk operation (e.g. delete) is requested, it returns a
+        pending confirmation with a log_id. Pass that log_id here to execute.
+
+        Args:
+            log_id: Decision log ID from the pending confirmation response
+        """
+        return orch.confirm_operation(log_id)
 
     # --- Edge lifecycle tools ---
 

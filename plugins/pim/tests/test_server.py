@@ -15,6 +15,7 @@ def test_server_has_all_tools(server):
     tool_names = {t.name for t in asyncio.run(server.list_tools())}
     expected = {
         "pim_create_node", "pim_query_nodes", "pim_update_node", "pim_close_node",
+        "pim_confirm",
         "pim_create_edge", "pim_query_edges", "pim_update_edge", "pim_close_edge",
         "pim_capture", "pim_dispatch", "pim_resolve", "pim_review", "pim_decision_log",
     }

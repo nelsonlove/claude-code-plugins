@@ -185,3 +185,92 @@ def test_note_creation_logged_as_medium(orch):
     node = orch.create_node("note", {"title": "Doc"})
     log = orch.get_decision_log(target=node["id"])
     assert log[0]["risk_tier"] == "medium"
+
+
+# --- Confirmation flow tests ---
+
+def test_high_risk_delete_returns_confirmation_request(orch):
+    """Deleting a node should return a confirmation request, not execute."""
+    node = orch.create_node("note", {"title": "Important"})
+    result = orch.close_node(node["id"], "delete")
+    assert result["status"] == "pending_confirmation"
+    assert "log_id" in result
+    assert result["operation"] == "close_node"
+    assert result["mode"] == "delete"
+    # Node should still exist
+    nodes = orch.query_nodes("note")
+    assert len(nodes) == 1
+
+
+def test_confirm_operation_executes_pending(orch):
+    """Confirming a pending operation should execute it."""
+    node = orch.create_node("note", {"title": "To delete"})
+    result = orch.close_node(node["id"], "delete")
+    log_id = result["log_id"]
+
+    # Confirm the operation
+    confirm_result = orch.confirm_operation(log_id)
+    assert confirm_result["status"] == "confirmed"
+    assert confirm_result["log_id"] == log_id
+
+    # Now the node should be gone
+    nodes = orch.query_nodes("note")
+    assert len(nodes) == 0
+
+
+def test_confirm_invalid_log_id_raises(orch):
+    """Confirming a non-existent log_id should raise ValueError."""
+    with pytest.raises(ValueError, match="No pending operation"):
+        orch.confirm_operation("dl-nonexistent")
+
+
+def test_confirm_already_confirmed_raises(orch):
+    """Confirming an already-confirmed operation should raise ValueError."""
+    node = orch.create_node("note", {"title": "To delete"})
+    result = orch.close_node(node["id"], "delete")
+    log_id = result["log_id"]
+    orch.confirm_operation(log_id)
+    # Second confirmation should fail
+    with pytest.raises(ValueError, match="No pending operation"):
+        orch.confirm_operation(log_id)
+
+
+def test_pending_logged_as_pending_confirmation(orch):
+    """The decision log should record pending_confirmation for high-risk ops."""
+    node = orch.create_node("note", {"title": "Important"})
+    result = orch.close_node(node["id"], "delete")
+    log = orch.get_decision_log(target=node["id"], operation="close_node")
+    assert len(log) == 1
+    assert log[0]["approval"] == "pending_confirmation"
+    assert log[0]["risk_tier"] == "high"
+
+
+def test_confirmed_log_updated(orch):
+    """After confirmation, the decision log should show 'confirmed'."""
+    node = orch.create_node("note", {"title": "To delete"})
+    result = orch.close_node(node["id"], "delete")
+    orch.confirm_operation(result["log_id"])
+    log = orch.get_decision_log(target=node["id"], operation="close_node")
+    assert log[0]["approval"] == "confirmed"
+
+
+def test_low_risk_operations_execute_immediately(orch):
+    """Low risk ops should not require confirmation."""
+    node = orch.create_node("entry", {"title": "Journal"})
+    assert node["type"] == "entry"
+    # Should execute without pending
+
+
+def test_medium_risk_operations_execute_immediately(orch):
+    """Medium risk ops execute after validation (no user confirmation)."""
+    node = orch.create_node("task", {"title": "Do thing", "status": "open"})
+    assert node["type"] == "task"
+
+
+def test_non_delete_close_executes_immediately(orch):
+    """Non-delete close modes should execute immediately (medium risk)."""
+    node = orch.create_node("task", {"title": "Done", "status": "open"})
+    result = orch.close_node(node["id"], "complete")
+    assert result is None  # No confirmation needed
+    nodes = orch.query_nodes("task", {"register": "log"})
+    assert len(nodes) == 1
