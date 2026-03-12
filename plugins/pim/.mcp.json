@@ -2,8 +2,7 @@
   "mcpServers": {
     "pim": {
       "command": "python3",
-      "args": ["-m", "src.server"],
-      "cwd": "${CLAUDE_PLUGIN_ROOT}",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/src/run_server.py"],
       "env": {
         "PIM_DATA_DIR": "~/.local/share/pim"
       }
