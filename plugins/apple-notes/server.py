@@ -87,25 +87,26 @@ TOOLS = [
     },
     {
         "name": "delete_note",
-        "description": "Delete a note from Apple Notes by title.",
+        "description": "Delete a note from Apple Notes by title or pk.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "title": {"type": "string", "description": "Exact note title"},
+                "id": {"type": "integer", "description": "Note primary key (pk)"},
             },
-            "required": ["title"],
         },
     },
     {
         "name": "move_note",
-        "description": "Move a note to a different folder in Apple Notes.",
+        "description": "Move a note to a different folder in Apple Notes by title or pk.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "title": {"type": "string", "description": "Exact note title"},
+                "id": {"type": "integer", "description": "Note primary key (pk)"},
                 "folder": {"type": "string", "description": "Destination folder name"},
             },
-            "required": ["title", "folder"],
+            "required": ["folder"],
         },
     },
 ]
@@ -216,12 +217,28 @@ def handle_tool(tool, args):
         return frontmatter + "\n\n" + md_body
 
     elif tool == "delete_note":
-        delete_note(args["title"])
-        return f"Deleted note: {args['title']}"
+        title = args.get("title")
+        if not title and args.get("id"):
+            note = db.get_note_by_pk(args["id"])
+            if note is None:
+                raise ValueError(f"Note not found with pk: {args['id']}")
+            title = note["title"]
+        if not title:
+            raise ValueError("Must provide title or id")
+        delete_note(title)
+        return f"Deleted note: {title}"
 
     elif tool == "move_note":
-        move_note(args["title"], args["folder"])
-        return f"Moved note '{args['title']}' to folder '{args['folder']}'"
+        title = args.get("title")
+        if not title and args.get("id"):
+            note = db.get_note_by_pk(args["id"])
+            if note is None:
+                raise ValueError(f"Note not found with pk: {args['id']}")
+            title = note["title"]
+        if not title:
+            raise ValueError("Must provide title or id")
+        move_note(title, args["folder"])
+        return f"Moved note '{title}' to folder '{args['folder']}'"
 
     else:
         raise ValueError(f"Unknown tool: {tool}")
