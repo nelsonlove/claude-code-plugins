@@ -227,8 +227,8 @@ class Orchestrator:
             raise ValueError(f"No pending operation found for log_id: {log_id!r}")
         entry = dict(row)
         evidence = json.loads(entry["evidence"]) if entry["evidence"] else {}
-        operation = evidence.get("operation")
-        target = evidence.get("target")
+        operation = entry["operation"]
+        target = entry["target"]
 
         # Execute the stored operation
         if operation == "close_node":
