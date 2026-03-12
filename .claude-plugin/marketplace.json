@@ -130,6 +130,15 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "pim",
+      "source": "./plugins/pim",
+      "description": "Personal information management — unified graph across notes, tasks, calendar, email, contacts, and more.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }
