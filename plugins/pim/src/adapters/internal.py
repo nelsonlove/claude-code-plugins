@@ -67,7 +67,7 @@ class InternalAdapter(Adapter):
 
     def query_nodes(self, obj_type: str, filters: dict | None = None) -> list[Node]:
         filters = filters or {}
-        text_search = filters.pop("text_search", None)
+        text_search = filters.get("text_search")
 
         if text_search:
             rows = self.conn.execute(
@@ -215,6 +215,9 @@ class InternalAdapter(Adapter):
         return self._row_to_edge(row)
 
     def query_edges(self, node_id: str, direction: str = "both", edge_type: str | None = None) -> list[Edge]:
+        if direction not in ("outbound", "inbound", "both"):
+            raise ValueError(f"Invalid direction: {direction!r}")
+
         conditions = []
         params: list = []
 
@@ -245,6 +248,9 @@ class InternalAdapter(Adapter):
         if "metadata" in changes:
             sets.append("metadata = ?")
             params.append(json.dumps(changes["metadata"]))
+        if not sets:
+            row = self.conn.execute("SELECT * FROM edges WHERE id = ?", (edge_id,)).fetchone()
+            return self._row_to_edge(row)
         params.append(edge_id)
         self.conn.execute(f"UPDATE edges SET {', '.join(sets)} WHERE id = ?", params)
         self.conn.commit()
