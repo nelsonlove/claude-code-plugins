@@ -85,3 +85,103 @@ def test_valid_edge_types_accepted(orch):
     for rt in RELATION_TYPES:
         edge = orch.create_edge(n1["id"], n2["id"], rt)
         assert edge["type"] == rt
+
+
+# --- Risk classification tests ---
+
+def test_create_entry_is_low_risk(orch):
+    """Entries are append-only, low risk."""
+    risk = orch._classify_risk("create_node", obj_type="entry")
+    assert risk == "low"
+
+
+def test_create_task_is_medium_risk(orch):
+    risk = orch._classify_risk("create_node", obj_type="task")
+    assert risk == "medium"
+
+
+def test_create_note_is_medium_risk(orch):
+    risk = orch._classify_risk("create_node", obj_type="note")
+    assert risk == "medium"
+
+
+def test_create_contact_is_medium_risk(orch):
+    risk = orch._classify_risk("create_node", obj_type="contact")
+    assert risk == "medium"
+
+
+def test_register_transition_is_low_risk(orch):
+    risk = orch._classify_risk("update_register")
+    assert risk == "low"
+
+
+def test_associative_edge_is_low_risk(orch):
+    for edge_type in ("references", "related-to", "belongs-to"):
+        risk = orch._classify_risk("create_edge", changes={"type": edge_type})
+        assert risk == "low", f"{edge_type} should be low risk"
+
+
+def test_agency_edge_is_medium_risk(orch):
+    for edge_type in ("from", "to", "involves", "delegated-to", "sent-by", "member-of"):
+        risk = orch._classify_risk("create_edge", changes={"type": edge_type})
+        assert risk == "medium", f"{edge_type} should be medium risk"
+
+
+def test_derivation_edge_is_medium_risk(orch):
+    risk = orch._classify_risk("create_edge", changes={"type": "derived-from"})
+    assert risk == "medium"
+
+
+def test_delete_is_high_risk(orch):
+    risk = orch._classify_risk("close_node", changes={"mode": "delete"})
+    assert risk == "high"
+
+
+def test_body_overwrite_is_high_risk(orch):
+    """Overwriting existing body content is high risk."""
+    risk = orch._classify_risk("overwrite_body")
+    assert risk == "high"
+
+
+def test_merge_is_high_risk(orch):
+    risk = orch._classify_risk("merge")
+    assert risk == "high"
+
+
+def test_ambiguous_resolution_is_high_risk(orch):
+    risk = orch._classify_risk("ambiguous_resolution")
+    assert risk == "high"
+
+
+def test_update_node_is_medium_risk(orch):
+    risk = orch._classify_risk("update_node", obj_type="task")
+    assert risk == "medium"
+
+
+def test_query_is_low_risk(orch):
+    assert orch._classify_risk("query_nodes") == "low"
+    assert orch._classify_risk("query_edges") == "low"
+
+
+def test_complete_close_is_not_high_risk(orch):
+    """Completing a node is not high risk (only delete is)."""
+    risk = orch._classify_risk("close_node", changes={"mode": "complete"})
+    assert risk == "medium"
+
+
+def test_archive_close_is_not_high_risk(orch):
+    risk = orch._classify_risk("close_node", changes={"mode": "archive"})
+    assert risk == "medium"
+
+
+def test_entry_creation_logged_as_low(orch):
+    """Verify the actual decision log records low risk for entries."""
+    node = orch.create_node("entry", {"title": "Journal"})
+    log = orch.get_decision_log(target=node["id"])
+    assert log[0]["risk_tier"] == "low"
+
+
+def test_note_creation_logged_as_medium(orch):
+    node = orch.create_node("note", {"title": "Doc"})
+    log = orch.get_decision_log(target=node["id"])
+    assert log[0]["risk_tier"] == "medium"

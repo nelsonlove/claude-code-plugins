@@ -76,15 +76,55 @@ class Orchestrator:
         self.conn.commit()
         return log_id
 
+    # Edge types considered associative (low risk to create)
+    _ASSOCIATIVE_EDGES = frozenset({"references", "related-to", "belongs-to"})
+    # Edge types considered agency or derivation (medium risk)
+    _AGENCY_EDGES = frozenset({"from", "to", "involves", "delegated-to", "sent-by", "member-of"})
+    _DERIVATION_EDGES = frozenset({"derived-from"})
+
     def _classify_risk(self, operation: str, obj_type: str | None = None, changes: dict | None = None) -> str:
+        # --- Low risk (autonomous) ---
+        # Creating entries is append-only
+        if operation == "create_node" and obj_type == "entry":
+            return RISK_LOW
+        # Register transitions
         if operation == "update_register":
             return RISK_LOW
-        if operation == "create_edge" and changes and changes.get("type") in ("references", "related-to", "belongs-to"):
+        # Associative relations
+        if operation == "create_edge" and changes and changes.get("type") in self._ASSOCIATIVE_EDGES:
             return RISK_LOW
+        # Read/query operations
+        if operation in ("query_nodes", "query_edges"):
+            return RISK_LOW
+
+        # --- High risk (confirmed) ---
+        # Deleting any node
         if operation == "close_node" and changes and changes.get("mode") == "delete":
             return RISK_HIGH
+        # Overwriting existing body content
+        if operation == "overwrite_body":
+            return RISK_HIGH
+        # Merging nodes
         if operation == "merge":
             return RISK_HIGH
+        # Ambiguous identity resolution
+        if operation == "ambiguous_resolution":
+            return RISK_HIGH
+
+        # --- Medium risk (validated) ---
+        # Creating typed nodes (note, task, event, resource, contact, topic)
+        if operation == "create_node":
+            return RISK_MEDIUM
+        # Agency or derivation edges
+        if operation == "create_edge" and changes:
+            edge_t = changes.get("type", "")
+            if edge_t in self._AGENCY_EDGES or edge_t in self._DERIVATION_EDGES:
+                return RISK_MEDIUM
+        # Updating node attributes
+        if operation == "update_node":
+            return RISK_MEDIUM
+
+        # Default to medium for anything unrecognized
         return RISK_MEDIUM
 
     def create_node(self, obj_type: str, attributes: dict, body: str | None = None,
