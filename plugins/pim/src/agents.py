@@ -179,7 +179,8 @@ class BriefingAgent:
         related_nodes = []
         for e in edges[:50]:
             try:
-                parts = __import__("src.uri", fromlist=["parse_uri"]).parse_uri(e["source"])
+                from src.uri import parse_uri
+                parts = parse_uri(e["source"])
                 adapter = self.orch.adapters.get(parts["adapter"], self.orch.internal)
                 native_id = adapter.reverse_resolve(e["source"])
                 if native_id:
@@ -200,7 +201,8 @@ class BriefingAgent:
         items_by_type: dict[str, list] = {}
         for e in edges[:50]:
             try:
-                parts = __import__("src.uri", fromlist=["parse_uri"]).parse_uri(e["source"])
+                from src.uri import parse_uri
+                parts = parse_uri(e["source"])
                 adapter = self.orch.adapters.get(parts["adapter"], self.orch.internal)
                 native_id = adapter.reverse_resolve(e["source"])
                 if native_id:
@@ -241,14 +243,9 @@ class ResearchAgent:
             for n in nodes:
                 results["text_results"].append(dict(n))
 
-        # Semantic search if available
-        if self.semantic and hasattr(self, '_query_embedding'):
-            embedding = self._query_embedding(query)
-            if embedding:
-                sem_results = self.semantic.search(
-                    embedding, limit=limit, obj_type=obj_type
-                )
-                results["semantic_results"] = sem_results
+        # Semantic search — requires LLM-provided query embedding (future tier)
+        # self.semantic is available but _query_embedding needs an embedding
+        # model to convert text queries to vectors, which is a Tier 2+ feature.
 
         return {
             "query": query,

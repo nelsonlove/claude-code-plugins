@@ -24,6 +24,11 @@ class OrgRoamAdapter(Adapter):
     supported_operations = ("query", "create", "update")
     supported_registers = ("scratch", "working", "reference")
 
+    @staticmethod
+    def _escape_elisp(s: str) -> str:
+        """Escape a string for safe inclusion in an elisp double-quoted string."""
+        return s.replace("\\", "\\\\").replace('"', '\\"')
+
     def _eval(self, elisp: str) -> str:
         """Evaluate an Emacs Lisp expression via emacsclient.
 
@@ -89,8 +94,9 @@ class OrgRoamAdapter(Adapter):
             return False
 
     def resolve(self, native_id: str) -> Node | None:
+        safe_id = self._escape_elisp(native_id)
         data = self._eval_json(
-            f'(org-roam-node-to-plist (org-roam-node-from-id "{native_id}"))'
+            f'(org-roam-node-to-plist (org-roam-node-from-id "{safe_id}"))'
         )
         if data is None:
             return None
@@ -120,7 +126,7 @@ class OrgRoamAdapter(Adapter):
         if obj_type != "note":
             raise ValueError(f"org-roam adapter only supports notes, got {obj_type}")
 
-        title = attributes.get("title", "Untitled")
+        title = self._escape_elisp(attributes.get("title", "Untitled"))
         tags = attributes.get("tags", [])
 
         # Use org-roam capture to create a new note
@@ -135,15 +141,17 @@ class OrgRoamAdapter(Adapter):
         node_id = result.strip('"')
 
         if body:
+            safe_body = self._escape_elisp(body)
+            safe_node_id = self._escape_elisp(node_id)
             # Append body to the file
             file_result = self._eval(
-                f'(org-roam-node-file (org-roam-node-from-id "{node_id}"))'
+                f'(org-roam-node-file (org-roam-node-from-id "{safe_node_id}"))'
             )
-            file_path = file_result.strip('"')
+            file_path = self._escape_elisp(file_result.strip('"'))
             self._eval(
                 f'(with-current-buffer (find-file-noselect "{file_path}") '
                 f'  (goto-char (point-max)) '
-                f'  (insert "\\n{body}") '
+                f'  (insert "\\n{safe_body}") '
                 f'  (save-buffer))'
             )
 
@@ -167,9 +175,10 @@ class OrgRoamAdapter(Adapter):
 
         text_search = filters.get("text_search")
         if text_search:
+            safe_search = self._escape_elisp(text_search)
             data = self._eval_json(
                 f'(mapcar #\'org-roam-node-to-plist '
-                f'  (seq-take (org-roam-node-find nil "{text_search}") {limit}))'
+                f'  (seq-take (org-roam-node-find nil "{safe_search}") {limit}))'
             )
         else:
             data = self._eval_json(
@@ -190,27 +199,30 @@ class OrgRoamAdapter(Adapter):
         return nodes
 
     def update_node(self, native_id: str, changes: dict) -> Node:
+        safe_id = self._escape_elisp(native_id)
         attrs = changes.get("attributes", {})
         new_title = attrs.get("title")
 
         if new_title:
+            safe_title = self._escape_elisp(new_title)
             self._eval(
-                f'(let ((node (org-roam-node-from-id "{native_id}"))) '
+                f'(let ((node (org-roam-node-from-id "{safe_id}"))) '
                 f'  (when node '
                 f'    (with-current-buffer (find-file-noselect (org-roam-node-file node)) '
                 f'      (goto-char (point-min)) '
                 f'      (when (re-search-forward "^#\\+title: .*$" nil t) '
-                f'        (replace-match "#+title: {new_title}")) '
+                f'        (replace-match "#+title: {safe_title}")) '
                 f'      (save-buffer))))'
             )
 
         new_tags = attrs.get("tags")
         if new_tags is not None:
-            tags_str = ":".join(new_tags)
+            safe_tags = [self._escape_elisp(t) for t in new_tags]
+            tags_str = ":".join(safe_tags)
             if tags_str:
                 tags_str = f":{tags_str}:"
             self._eval(
-                f'(let ((node (org-roam-node-from-id "{native_id}"))) '
+                f'(let ((node (org-roam-node-from-id "{safe_id}"))) '
                 f'  (when node '
                 f'    (with-current-buffer (find-file-noselect (org-roam-node-file node)) '
                 f'      (goto-char (point-min)) '
@@ -228,16 +240,17 @@ class OrgRoamAdapter(Adapter):
         return node
 
     def close_node(self, native_id: str, mode: str) -> None:
+        safe_id = self._escape_elisp(native_id)
         if mode == "delete":
             self._eval(
-                f'(let ((node (org-roam-node-from-id "{native_id}"))) '
+                f'(let ((node (org-roam-node-from-id "{safe_id}"))) '
                 f'  (when node '
                 f'    (delete-file (org-roam-node-file node)) '
                 f'    (org-roam-db-sync)))'
             )
         elif mode == "archive":
             self._eval(
-                f'(let ((node (org-roam-node-from-id "{native_id}"))) '
+                f'(let ((node (org-roam-node-from-id "{safe_id}"))) '
                 f'  (when node '
                 f'    (with-current-buffer (find-file-noselect (org-roam-node-file node)) '
                 f'      (goto-char (point-min)) '
@@ -259,8 +272,9 @@ class OrgRoamAdapter(Adapter):
         })
 
     def fetch_body(self, native_id: str) -> str | None:
+        safe_id = self._escape_elisp(native_id)
         result = self._eval(
-            f'(let ((node (org-roam-node-from-id "{native_id}"))) '
+            f'(let ((node (org-roam-node-from-id "{safe_id}"))) '
             f'  (when node '
             f'    (with-current-buffer (find-file-noselect (org-roam-node-file node)) '
             f'      (buffer-string))))'

@@ -4,7 +4,7 @@ import json
 import subprocess
 from typing import Any
 
-from src.adapter import Adapter, Node, SyncResult
+from src.adapter import Adapter, Node, SyncResult, escape_applescript
 from src.uri import pim_uri
 
 
@@ -195,9 +195,9 @@ class SafariAdapter(Adapter):
         target = attributes.get("target", "reading_list")
 
         if target == "bookmark":
-            script = AS_ADD_BOOKMARK.replace("%URL%", url).replace("%TITLE%", json.dumps(title))
+            script = AS_ADD_BOOKMARK.replace("%URL%", escape_applescript(url)).replace("%TITLE%", json.dumps(title))
         else:
-            script = AS_ADD_READING_LIST.replace("%URL%", url)
+            script = AS_ADD_READING_LIST.replace("%URL%", escape_applescript(url))
 
         result = self._run_osascript(script)
         if result.returncode != 0:

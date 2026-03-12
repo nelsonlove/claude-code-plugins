@@ -4,7 +4,7 @@ import json
 import subprocess
 from typing import Any
 
-from src.adapter import Adapter, Node, Edge, SyncResult
+from src.adapter import Adapter, Node, Edge, SyncResult, escape_applescript
 from src.uri import pim_uri
 
 # --- JXA script templates ---
@@ -304,13 +304,13 @@ class OmniFocusAdapter(Adapter):
 
     def resolve(self, native_id: str) -> Node | None:
         # Try task first, then project
-        script = JXA_GET_TASK.replace("%TASK_ID%", native_id)
+        script = JXA_GET_TASK.replace("%TASK_ID%", escape_applescript(native_id))
         result = self._run_jxa(script)
         data = self._parse_json(result)
         if data is not None:
             return self._task_to_node(data)
 
-        script = JXA_GET_PROJECT.replace("%PROJECT_ID%", native_id)
+        script = JXA_GET_PROJECT.replace("%PROJECT_ID%", escape_applescript(native_id))
         result = self._run_jxa(script)
         data = self._parse_json(result)
         if data is not None:
@@ -355,7 +355,7 @@ class OmniFocusAdapter(Adapter):
 
         if project_id:
             script = JXA_CREATE_PROJECT_TASK
-            script = script.replace("%PROJECT_ID%", project_id)
+            script = script.replace("%PROJECT_ID%", escape_applescript(project_id))
         else:
             script = JXA_CREATE_INBOX_TASK
 
@@ -423,7 +423,7 @@ class OmniFocusAdapter(Adapter):
         updates_str = "\n".join(updates_lines) if updates_lines else ""
 
         # Try task first
-        script = JXA_UPDATE_TASK.replace("%TASK_ID%", native_id).replace("%UPDATES%", updates_str)
+        script = JXA_UPDATE_TASK.replace("%TASK_ID%", escape_applescript(native_id)).replace("%UPDATES%", updates_str)
         result = self._run_jxa(script)
         if result.returncode == 0:
             data = self._parse_json(result)
@@ -431,7 +431,7 @@ class OmniFocusAdapter(Adapter):
 
         # Try project
         project_updates = updates_str.replace("t.", "p.")
-        script = JXA_UPDATE_PROJECT.replace("%PROJECT_ID%", native_id).replace("%UPDATES%", project_updates)
+        script = JXA_UPDATE_PROJECT.replace("%PROJECT_ID%", escape_applescript(native_id)).replace("%UPDATES%", project_updates)
         result = self._run_jxa(script)
         data = self._parse_json(result)
         return self._project_to_node(data)
@@ -439,19 +439,19 @@ class OmniFocusAdapter(Adapter):
     def close_node(self, native_id: str, mode: str) -> None:
         if mode == "complete":
             # Try task
-            script = JXA_COMPLETE_TASK.replace("%TASK_ID%", native_id)
+            script = JXA_COMPLETE_TASK.replace("%TASK_ID%", escape_applescript(native_id))
             result = self._run_jxa(script)
             if result.returncode != 0:
                 # Try project
-                script = JXA_COMPLETE_PROJECT.replace("%PROJECT_ID%", native_id)
+                script = JXA_COMPLETE_PROJECT.replace("%PROJECT_ID%", escape_applescript(native_id))
                 result = self._run_jxa(script)
                 if result.returncode != 0:
                     raise RuntimeError(f"Failed to complete: {result.stderr}")
         elif mode == "delete":
-            script = JXA_DELETE_TASK.replace("%TASK_ID%", native_id)
+            script = JXA_DELETE_TASK.replace("%TASK_ID%", escape_applescript(native_id))
             result = self._run_jxa(script)
             if result.returncode != 0:
-                script = JXA_DELETE_PROJECT.replace("%PROJECT_ID%", native_id)
+                script = JXA_DELETE_PROJECT.replace("%PROJECT_ID%", escape_applescript(native_id))
                 result = self._run_jxa(script)
                 if result.returncode != 0:
                     raise RuntimeError(f"Failed to delete: {result.stderr}")

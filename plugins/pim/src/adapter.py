@@ -23,6 +23,16 @@ class SyncResult(dict):
     pass
 
 
+def escape_applescript(s: str) -> str:
+    """Escape a string for safe inclusion in an AppleScript double-quoted string."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def escape_shell_arg(s: str) -> str:
+    """Escape a string for safe use as a shell argument (single-quote wrapping)."""
+    return "'" + s.replace("'", "'\"'\"'") + "'"
+
+
 class Adapter(ABC):
     """
     Base class for PIM adapters.
