@@ -365,6 +365,8 @@ class OmniFocusAdapter(Adapter):
 
         result = self._run_jxa(script)
         data = self._parse_json(result)
+        if data is None:
+            raise RuntimeError("OmniFocus returned no data after task creation")
         return self._task_to_node(data)
 
     def _create_project(self, attributes: dict, body: str | None = None) -> Node:
@@ -373,6 +375,8 @@ class OmniFocusAdapter(Adapter):
         script = JXA_CREATE_PROJECT.replace("%NAME%", name).replace("%NOTE%", note)
         result = self._run_jxa(script)
         data = self._parse_json(result)
+        if data is None:
+            raise RuntimeError("OmniFocus returned no data after project creation")
         return self._project_to_node(data)
 
     def query_nodes(self, obj_type: str, filters: dict | None = None) -> list[Node]:
@@ -409,9 +413,7 @@ class OmniFocusAdapter(Adapter):
     def update_node(self, native_id: str, changes: dict) -> Node:
         attrs = changes.get("attributes", {})
 
-        # Determine if this is a task or project by trying to resolve
-        updates_lines = []
-        is_project = False
+        updates_lines: list[str] = []
 
         if "title" in attrs:
             updates_lines.append(f't.name = {json.dumps(attrs["title"])};')
@@ -427,6 +429,8 @@ class OmniFocusAdapter(Adapter):
         result = self._run_jxa(script)
         if result.returncode == 0:
             data = self._parse_json(result)
+            if data is None:
+                raise RuntimeError("OmniFocus returned no data after task update")
             return self._task_to_node(data)
 
         # Try project
@@ -434,6 +438,8 @@ class OmniFocusAdapter(Adapter):
         script = JXA_UPDATE_PROJECT.replace("%PROJECT_ID%", escape_applescript(native_id)).replace("%UPDATES%", project_updates)
         result = self._run_jxa(script)
         data = self._parse_json(result)
+        if data is None:
+            raise RuntimeError("OmniFocus returned no data after project update")
         return self._project_to_node(data)
 
     def close_node(self, native_id: str, mode: str) -> None:
@@ -459,11 +465,20 @@ class OmniFocusAdapter(Adapter):
             raise ValueError(f"OmniFocus adapter supports close modes: complete, delete. Got: {mode}")
 
     def sync(self, since: str | None = None) -> SyncResult:
+        changed: list[Node] = []
+
+        # Sync tasks
         since_val = f'"{since}"' if since else "null"
         script = JXA_SYNC.replace("%SINCE%", since_val)
         result = self._run_jxa(script)
         items = self._parse_json(result) or []
-        changed = [self._task_to_node(t) for t in items]
+        changed.extend(self._task_to_node(t) for t in items)
+
+        # Sync projects (no modification date filter available, return all)
+        result = self._run_jxa(JXA_LIST_PROJECTS)
+        projects = self._parse_json(result) or []
+        changed.extend(self._project_to_node(p) for p in projects)
+
         return SyncResult({"changed_nodes": changed, "changed_edges": []})
 
     def fetch_body(self, native_id: str) -> str | None:
