@@ -1,0 +1,11 @@
+{
+  "name": "pim",
+  "version": "0.1.0",
+  "description": "Personal information management — unified graph across notes, tasks, calendar, email, contacts, and more.",
+  "author": {
+    "name": "Nelson Love"
+  },
+  "repository": "https://github.com/nelsonlove/claude-code-plugins",
+  "license": "MIT",
+  "keywords": ["pim", "gtd", "notes", "tasks", "calendar", "contacts", "graph"]
+}
