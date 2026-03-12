@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "pim": {
+      "command": "python3",
+      "args": ["-m", "src.server"],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}",
+      "env": {
+        "PIM_DATA_DIR": "~/.local/share/pim"
+      }
+    }
+  }
+}
