@@ -261,15 +261,27 @@ def test_reverse_resolve(adapter):
 # --- sync ---
 
 def test_sync(adapter, mock_jxa):
-    mock_jxa.return_value = MagicMock(
-        returncode=0,
-        stdout=json.dumps([
-            {"id": "t1", "name": "Changed", "completed": False, "flagged": False, "inInbox": False},
-        ]),
-        stderr="",
-    )
+    # sync() makes two JXA calls: tasks (JXA_SYNC) then projects (JXA_LIST_PROJECTS)
+    mock_jxa.side_effect = [
+        MagicMock(
+            returncode=0,
+            stdout=json.dumps([
+                {"id": "t1", "name": "Changed", "completed": False, "flagged": False, "inInbox": False},
+            ]),
+            stderr="",
+        ),
+        MagicMock(
+            returncode=0,
+            stdout=json.dumps([
+                {"id": "p1", "name": "Project", "status": "active", "sequential": False},
+            ]),
+            stderr="",
+        ),
+    ]
     result = adapter.sync("2026-03-01T00:00:00Z")
-    assert len(result["changed_nodes"]) == 1
+    assert len(result["changed_nodes"]) == 2
+    types = {n["type"] for n in result["changed_nodes"]}
+    assert types == {"task", "topic"}
 
 
 # --- fetch_body ---

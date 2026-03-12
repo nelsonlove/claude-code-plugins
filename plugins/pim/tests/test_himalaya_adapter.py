@@ -214,6 +214,24 @@ def test_enumerate_messages(adapter, mock_himalaya):
     )
     page = adapter.enumerate("message", limit=3)
     assert len(page) == 5  # himalaya does its own pagination; we pass page-size
+    # Default folder is INBOX → scratch register
+    assert all(m["register"] == "scratch" for m in page)
+    # Verify --folder INBOX was passed to himalaya
+    call_args = mock_himalaya.call_args[0][0]
+    assert "--folder" in call_args
+    assert "INBOX" in call_args
+
+
+def test_enumerate_messages_with_folder(adapter, mock_himalaya):
+    msgs = [
+        {"id": "1", "subject": "Archived", "from": {"name": "X", "addr": "x@y.com"}, "date": "2026-03-12"}
+    ]
+    mock_himalaya.return_value = MagicMock(
+        returncode=0, stdout=json.dumps(msgs), stderr=""
+    )
+    page = adapter.enumerate("message", filters={"folder": "Archive"}, limit=10)
+    assert len(page) == 1
+    assert page[0]["register"] == "log"
 
 
 def test_enumerate_unsupported_type(adapter, mock_himalaya):
@@ -239,6 +257,8 @@ def test_sync(adapter, mock_himalaya):
     )
     result = adapter.sync()
     assert len(result["changed_nodes"]) == 1
+    # Sync pulls from INBOX → scratch register
+    assert result["changed_nodes"][0]["register"] == "scratch"
 
 
 # --- register mapping ---
@@ -262,28 +282,32 @@ def test_register_custom_folder_is_working(adapter):
 # --- update_node ---
 
 def test_update_node_move_folder(adapter, mock_himalaya):
-    # First call: move; second call: resolve (read)
+    # First call: move; second call: re-read
     move_result = MagicMock(returncode=0, stdout="", stderr="")
-    resolve_result = MagicMock(
+    read_result = MagicMock(
         returncode=0,
         stdout=json.dumps({"id": "1", "subject": "Moved", "from": {"name": "A", "addr": "a@b.com"}, "date": "2026-03-12"}),
         stderr="",
     )
-    mock_himalaya.side_effect = [move_result, resolve_result]
+    mock_himalaya.side_effect = [move_result, read_result]
     node = adapter.update_node("1", {"folder": "Work"})
     assert node["native_id"] == "1"
+    # "Work" is a custom folder → working register
+    assert node["register"] == "working"
 
 
 def test_update_node_move_by_register(adapter, mock_himalaya):
     move_result = MagicMock(returncode=0, stdout="", stderr="")
-    resolve_result = MagicMock(
+    read_result = MagicMock(
         returncode=0,
         stdout=json.dumps({"id": "2", "subject": "Test", "from": {"name": "B", "addr": "b@c.com"}, "date": "2026-03-12"}),
         stderr="",
     )
-    mock_himalaya.side_effect = [move_result, resolve_result]
+    mock_himalaya.side_effect = [move_result, read_result]
     node = adapter.update_node("2", {"register": "log"})
     assert node is not None
+    # register=log maps to Archive folder → log register
+    assert node["register"] == "log"
 
 
 # --- adapter_id ---

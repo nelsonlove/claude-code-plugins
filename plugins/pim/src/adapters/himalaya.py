@@ -110,13 +110,15 @@ class HimalayaAdapter(Adapter):
     def enumerate(self, obj_type: str, filters: dict | None = None, limit: int = 100, offset: int = 0) -> list[Node]:
         if obj_type != "message":
             return []
+        folder = (filters or {}).get("folder", "INBOX")
         args = ["list", "--output", "json", "--page-size", str(limit)]
+        args.extend(["--folder", folder])
         if offset > 0:
             page = (offset // limit) + 1
             args.extend(["--page", str(page)])
         result = self._run_himalaya(*args)
         items = self._parse_json(result) or []
-        return [self._message_to_node(m) for m in items]
+        return [self._message_to_node(m, folder=folder) for m in items]
 
     def create_node(self, obj_type: str, attributes: dict, body: str | None = None) -> Node:
         if obj_type != "message":
@@ -186,20 +188,29 @@ class HimalayaAdapter(Adapter):
     def update_node(self, native_id: str, changes: dict) -> Node:
         # Email messages are largely immutable; the main mutable operation is
         # moving to a different folder (register change)
+        target_folder: str | None = None
         if "register" in changes or "folder" in changes:
-            folder = changes.get("folder")
-            if not folder:
+            target_folder = changes.get("folder")
+            if not target_folder:
                 register = changes.get("register", "working")
                 folder_map = {"scratch": "INBOX", "working": "INBOX", "log": "Archive"}
-                folder = folder_map.get(register, "INBOX")
-            result = self._run_himalaya("move", native_id, folder)
+                target_folder = folder_map.get(register, "INBOX")
+            result = self._run_himalaya("move", native_id, target_folder)
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to move message: {result.stderr}")
 
-        node = self.resolve(native_id)
-        if node is None:
+        # Re-resolve; pass target folder so register is computed correctly
+        result = self._run_himalaya("read", native_id, "--output", "json")
+        if result.returncode != 0:
             raise ValueError(f"Message not found after update: {native_id}")
-        return node
+        data = self._parse_json(result)
+        if data is None:
+            raise ValueError(f"Message not found after update: {native_id}")
+        if isinstance(data, list):
+            if len(data) == 0:
+                raise ValueError(f"Message not found after update: {native_id}")
+            data = data[0]
+        return self._message_to_node(data, folder=target_folder)
 
     def close_node(self, native_id: str, mode: str) -> None:
         if mode == "delete":
@@ -214,10 +225,10 @@ class HimalayaAdapter(Adapter):
             raise ValueError(f"Himalaya adapter supports close modes: delete, archive. Got: {mode}")
 
     def sync(self, since: str | None = None) -> SyncResult:
-        # Himalaya doesn't have a native sync-since; return recent messages
-        result = self._run_himalaya("list", "--output", "json")
+        # Himalaya doesn't have a native sync-since; return recent INBOX messages
+        result = self._run_himalaya("list", "--output", "json", "--folder", "INBOX")
         items = self._parse_json(result) or []
-        changed = [self._message_to_node(m) for m in items]
+        changed = [self._message_to_node(m, folder="INBOX") for m in items]
         return SyncResult({"changed_nodes": changed, "changed_edges": []})
 
     def fetch_body(self, native_id: str) -> str | None:
