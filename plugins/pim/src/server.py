@@ -1,6 +1,5 @@
 """PIM MCP server — exposes ontology tools via FastMCP."""
 
-import json
 import os
 from pathlib import Path
 
@@ -8,6 +7,7 @@ from fastmcp import FastMCP
 
 from src.constants import DATA_DIR, DB_PATH, OBJECT_TYPES, REGISTERS, RELATION_TYPES, CLOSE_MODES
 from src.db import init_db
+from src.uri import parse_uri
 from src.adapters.internal import InternalAdapter
 from src.orchestrator import Orchestrator
 
@@ -284,7 +284,6 @@ def create_server() -> FastMCP:
             edges = orch.query_edges(target=topic, edge_type="belongs-to")
             node_ids = [e["source"] for e in edges]
             for nid in node_ids[:20]:
-                from src.uri import parse_uri
                 parts = parse_uri(nid)
                 adapter = orch.adapters.get(parts["adapter"], orch.internal)
                 native_id = adapter.reverse_resolve(nid)
@@ -296,7 +295,6 @@ def create_server() -> FastMCP:
         elif contact:
             edges = orch.query_edges(target=contact)
             for e in edges[:20]:
-                from src.uri import parse_uri
                 parts = parse_uri(e["source"])
                 adapter = orch.adapters.get(parts["adapter"], orch.internal)
                 native_id = adapter.reverse_resolve(e["source"])
@@ -323,3 +321,10 @@ def create_server() -> FastMCP:
         return orch.get_decision_log(target=target, operation=operation, limit=limit)
 
     return mcp
+
+
+# Entry point for MCP runner (lazy — only creates server when this module is run directly)
+mcp = create_server()
+
+if __name__ == "__main__":
+    mcp.run()

@@ -90,6 +90,8 @@ class Orchestrator:
         parts = parse_uri(pim_uri)
         adapter = self.adapters.get(parts["adapter"], self.internal)
         native_id = adapter.reverse_resolve(pim_uri)
+        if native_id is None:
+            raise ValueError(f"Node not found: {pim_uri}")
         if "register" in changes:
             risk = self._classify_risk("update_register")
         else:
@@ -101,6 +103,8 @@ class Orchestrator:
         parts = parse_uri(pim_uri)
         adapter = self.adapters.get(parts["adapter"], self.internal)
         native_id = adapter.reverse_resolve(pim_uri)
+        if native_id is None:
+            raise ValueError(f"Node not found: {pim_uri}")
         risk = self._classify_risk("close_node", changes={"mode": mode})
         self._log_decision("close_node", pim_uri, risk, evidence={"mode": mode})
         adapter.close_node(native_id, mode)
@@ -113,10 +117,12 @@ class Orchestrator:
 
     def query_edges(self, source: str | None = None, target: str | None = None,
                     edge_type: str | None = None, direction: str = "both") -> list[Edge]:
+        if source and target:
+            raise ValueError("Specify source or target, not both. Use direction to control traversal.")
         node_id = source or target
-        if source and not target:
+        if source:
             direction = "outbound"
-        elif target and not source:
+        elif target:
             direction = "inbound"
         return self.internal.query_edges(node_id, direction, edge_type)
 
