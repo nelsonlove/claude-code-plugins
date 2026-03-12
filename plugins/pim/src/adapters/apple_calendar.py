@@ -6,7 +6,7 @@ import subprocess
 from datetime import datetime, timedelta
 from typing import Any
 
-from src.adapter import Adapter, Node, SyncResult
+from src.adapter import Adapter, Node, SyncResult, escape_applescript
 from src.uri import pim_uri
 
 
@@ -244,8 +244,8 @@ class AppleCalendarAdapter(Adapter):
         script = AS_CREATE_EVENT
         script = script.replace("%CALENDAR%", calendar)
         script = script.replace("%TITLE%", json.dumps(title))
-        script = script.replace("%START%", start)
-        script = script.replace("%END%", end)
+        script = script.replace("%START%", escape_applescript(start))
+        script = script.replace("%END%", escape_applescript(end))
         script = script.replace("%LOCATION%", json.dumps(location))
 
         result = self._run_osascript(script)
@@ -310,12 +310,12 @@ class AppleCalendarAdapter(Adapter):
         if "location" in attrs:
             update_lines.append(f'set location of e to {json.dumps(attrs["location"])}')
         if "start" in attrs:
-            update_lines.append(f'set start date of e to date "{attrs["start"]}"')
+            update_lines.append(f'set start date of e to date "{escape_applescript(attrs["start"])}"')
         if "end" in attrs:
-            update_lines.append(f'set end date of e to date "{attrs["end"]}"')
+            update_lines.append(f'set end date of e to date "{escape_applescript(attrs["end"])}"')
 
         updates_str = "\n".join(update_lines) if update_lines else ""
-        script = AS_UPDATE_EVENT.replace("%UID%", native_id).replace("%UPDATES%", updates_str)
+        script = AS_UPDATE_EVENT.replace("%UID%", escape_applescript(native_id)).replace("%UPDATES%", updates_str)
 
         result = self._run_osascript(script)
         if result.returncode != 0:
@@ -329,7 +329,7 @@ class AppleCalendarAdapter(Adapter):
 
     def close_node(self, native_id: str, mode: str) -> None:
         if mode == "delete":
-            script = AS_DELETE_EVENT.replace("%UID%", native_id)
+            script = AS_DELETE_EVENT.replace("%UID%", escape_applescript(native_id))
             result = self._run_osascript(script)
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to delete event: {result.stderr}")

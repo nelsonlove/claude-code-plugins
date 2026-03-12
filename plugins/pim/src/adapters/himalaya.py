@@ -122,9 +122,9 @@ class HimalayaAdapter(Adapter):
         if obj_type != "message":
             raise ValueError(f"Unsupported type for Himalaya: {obj_type}")
 
-        subject = attributes.get("subject", "")
-        to_addr = attributes.get("to", "")
-        from_addr = attributes.get("from", "")
+        subject = attributes.get("subject", "").replace("\n", " ").replace("\r", " ")
+        to_addr = attributes.get("to", "").replace("\n", " ").replace("\r", " ")
+        from_addr = attributes.get("from", "").replace("\n", " ").replace("\r", " ")
 
         # Compose RFC 2822 message
         lines = []

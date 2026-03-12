@@ -4,7 +4,7 @@ import json
 import subprocess
 from typing import Any
 
-from src.adapter import Adapter, Node, SyncResult
+from src.adapter import Adapter, Node, SyncResult, escape_applescript
 from src.uri import pim_uri
 
 
@@ -231,7 +231,7 @@ class AppleNotesAdapter(Adapter):
         return result.returncode == 0
 
     def resolve(self, native_id: str) -> Node | None:
-        script = AS_GET_NOTE.replace("%NOTE_ID%", native_id)
+        script = AS_GET_NOTE.replace("%NOTE_ID%", escape_applescript(native_id))
         result = self._run_osascript_json(script)
         if result.returncode != 0:
             return None
@@ -267,7 +267,7 @@ class AppleNotesAdapter(Adapter):
         folder = attributes.get("folder")
 
         if folder:
-            folder_ref = f'folder "{folder}"'
+            folder_ref = f'folder "{escape_applescript(folder)}"'
         else:
             folder_ref = "default account"
 
@@ -306,7 +306,7 @@ class AppleNotesAdapter(Adapter):
         limit = filters.get("limit", 100)
 
         if text_search:
-            script = AS_SEARCH_NOTES.replace("%QUERY%", text_search.replace('"', '\\"'))
+            script = AS_SEARCH_NOTES.replace("%QUERY%", escape_applescript(text_search))
             result = self._run_osascript_json(script)
         else:
             result = self._run_osascript_json(AS_LIST_NOTES)
@@ -339,7 +339,7 @@ class AppleNotesAdapter(Adapter):
             update_lines.append(f'set body of n to {json.dumps(body)}')
 
         updates_str = "\n    ".join(update_lines) if update_lines else ""
-        script = AS_UPDATE_NOTE.replace("%NOTE_ID%", native_id).replace("%UPDATES%", updates_str)
+        script = AS_UPDATE_NOTE.replace("%NOTE_ID%", escape_applescript(native_id)).replace("%UPDATES%", updates_str)
 
         result = self._run_osascript(script)
         if result.returncode != 0:
@@ -352,7 +352,7 @@ class AppleNotesAdapter(Adapter):
 
     def close_node(self, native_id: str, mode: str) -> None:
         if mode == "delete":
-            script = AS_DELETE_NOTE.replace("%NOTE_ID%", native_id)
+            script = AS_DELETE_NOTE.replace("%NOTE_ID%", escape_applescript(native_id))
             result = self._run_osascript(script)
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to delete note: {result.stderr}")
