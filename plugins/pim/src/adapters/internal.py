@@ -197,6 +197,75 @@ class InternalAdapter(Adapter):
             return Path(row["body_path"]).read_text(encoding="utf-8")
         return row["body"]
 
+    def create_edge(self, source: str, target: str, edge_type: str, metadata: dict | None = None) -> Edge:
+        existing = self.conn.execute(
+            "SELECT * FROM edges WHERE source = ? AND target = ? AND type = ?",
+            (source, target, edge_type)
+        ).fetchone()
+        if existing:
+            return self._row_to_edge(existing)
+
+        edge_id = f"e-{generate_id('edge')}"
+        self.conn.execute(
+            "INSERT INTO edges (id, source, target, type, metadata) VALUES (?, ?, ?, ?, ?)",
+            (edge_id, source, target, edge_type, json.dumps(metadata or {}))
+        )
+        self.conn.commit()
+        row = self.conn.execute("SELECT * FROM edges WHERE id = ?", (edge_id,)).fetchone()
+        return self._row_to_edge(row)
+
+    def query_edges(self, node_id: str, direction: str = "both", edge_type: str | None = None) -> list[Edge]:
+        conditions = []
+        params: list = []
+
+        if direction in ("outbound", "both"):
+            conditions.append("source = ?")
+            params.append(node_id)
+        if direction in ("inbound", "both"):
+            conditions.append("target = ?")
+            params.append(node_id)
+
+        where = " OR ".join(conditions)
+        if edge_type:
+            where = f"({where}) AND type = ?"
+            params.append(edge_type)
+
+        rows = self.conn.execute(f"SELECT * FROM edges WHERE {where}", params).fetchall()
+        return [self._row_to_edge(r) for r in rows]
+
+    def update_edge(self, edge_id: str, changes: dict) -> Edge:
+        sets = []
+        params: list = []
+        if "type" in changes:
+            sets.append("type = ?")
+            params.append(changes["type"])
+        if "target" in changes:
+            sets.append("target = ?")
+            params.append(changes["target"])
+        if "metadata" in changes:
+            sets.append("metadata = ?")
+            params.append(json.dumps(changes["metadata"]))
+        params.append(edge_id)
+        self.conn.execute(f"UPDATE edges SET {', '.join(sets)} WHERE id = ?", params)
+        self.conn.commit()
+        row = self.conn.execute("SELECT * FROM edges WHERE id = ?", (edge_id,)).fetchone()
+        return self._row_to_edge(row)
+
+    def close_edge(self, edge_id: str) -> None:
+        self.conn.execute("DELETE FROM edges WHERE id = ?", (edge_id,))
+        self.conn.commit()
+
+    def _row_to_edge(self, row: sqlite3.Row) -> Edge:
+        return Edge({
+            "id": row["id"],
+            "source": row["source"],
+            "target": row["target"],
+            "type": row["type"],
+            "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
+            "source_op": row["source_op"],
+            "created_at": row["created_at"],
+        })
+
     def _row_to_node(self, row: sqlite3.Row) -> Node:
         return Node({
             "id": row["id"],
