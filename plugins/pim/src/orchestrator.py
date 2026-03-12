@@ -6,7 +6,10 @@ from pathlib import Path
 
 from src.adapter import Adapter, Node, Edge
 from src.uri import parse_uri, generate_id
-from src.constants import RISK_LOW, RISK_MEDIUM, RISK_HIGH
+from src.constants import (
+    RISK_LOW, RISK_MEDIUM, RISK_HIGH,
+    OBJECT_TYPES, REGISTERS, CLOSE_MODES, RELATION_TYPES,
+)
 
 
 class Orchestrator:
@@ -24,6 +27,26 @@ class Orchestrator:
         self.data_dir = data_dir
         self.adapters: dict[str, Adapter] = {"internal": internal_adapter}
         self.routing: dict = {}
+
+    @staticmethod
+    def _validate_type(obj_type: str) -> None:
+        if obj_type not in OBJECT_TYPES:
+            raise ValueError(f"Invalid type: {obj_type!r}. Valid types: {', '.join(OBJECT_TYPES)}")
+
+    @staticmethod
+    def _validate_register(register: str) -> None:
+        if register not in REGISTERS:
+            raise ValueError(f"Invalid register: {register!r}. Valid registers: {', '.join(REGISTERS)}")
+
+    @staticmethod
+    def _validate_close_mode(mode: str) -> None:
+        if mode not in CLOSE_MODES:
+            raise ValueError(f"Invalid mode: {mode!r}. Valid modes: {', '.join(CLOSE_MODES)}")
+
+    @staticmethod
+    def _validate_edge_type(edge_type: str) -> None:
+        if edge_type not in RELATION_TYPES:
+            raise ValueError(f"Invalid edge_type: {edge_type!r}. Valid types: {', '.join(RELATION_TYPES)}")
 
     def register_adapter(self, adapter: Adapter) -> None:
         self.adapters[adapter.adapter_id] = adapter
@@ -66,6 +89,8 @@ class Orchestrator:
 
     def create_node(self, obj_type: str, attributes: dict, body: str | None = None,
                     register: str = "scratch") -> Node:
+        self._validate_type(obj_type)
+        self._validate_register(register)
         adapter = self._resolve_adapter(obj_type, register)
         risk = self._classify_risk("create_node", obj_type)
         node = adapter.create_node(obj_type, attributes, body)
@@ -78,6 +103,7 @@ class Orchestrator:
         return adapter.resolve(node["native_id"])
 
     def query_nodes(self, obj_type: str, filters: dict | None = None) -> list[Node]:
+        self._validate_type(obj_type)
         filters = filters or {}
         register = filters.get("register")
         if register:
@@ -93,13 +119,15 @@ class Orchestrator:
         if native_id is None:
             raise ValueError(f"Node not found: {pim_uri}")
         if "register" in changes:
+            self._validate_register(changes["register"])
             risk = self._classify_risk("update_register")
         else:
             risk = self._classify_risk("update_node", parts["type"])
         self._log_decision("update_node", pim_uri, risk, evidence={"changes": changes})
         return adapter.update_node(native_id, changes)
 
-    def close_node(self, pim_uri: str, mode: str) -> None:
+    def close_node(self, pim_uri: str, mode: str) -> dict | None:
+        self._validate_close_mode(mode)
         parts = parse_uri(pim_uri)
         adapter = self.adapters.get(parts["adapter"], self.internal)
         native_id = adapter.reverse_resolve(pim_uri)
@@ -110,6 +138,7 @@ class Orchestrator:
         adapter.close_node(native_id, mode)
 
     def create_edge(self, source: str, target: str, edge_type: str, metadata: dict | None = None) -> Edge:
+        self._validate_edge_type(edge_type)
         risk = self._classify_risk("create_edge", changes={"type": edge_type})
         edge = self.internal.create_edge(source, target, edge_type, metadata)
         self._log_decision("create_edge", edge["id"], risk, evidence={"source": source, "target": target, "type": edge_type})
