@@ -187,7 +187,29 @@ Update the routing table. Accepts partial changes (e.g., `{"task": "omnifocus"}`
 
 ### Batch Operations
 
-For operations that create or modify many nodes at once — initial import, bulk capture, batch enrichment — the system supports a batch confirmation workflow.
+For operations that create or modify many nodes at once — initial import, bulk capture, batch enrichment — the system supports both a confirmation workflow and bulk throughput tools.
+
+#### Bulk Throughput
+
+Individual MCP tool calls for each node and edge are not viable at ingestion scale. Creating 366 message nodes and 1,796 edges one at a time is too slow. The system provides array-based bulk endpoints:
+
+```
+pim_create_nodes(nodes: [NodeSpec]) → [Node]
+```
+
+Create multiple nodes in a single call. Each `NodeSpec` contains type, attributes, and register. Returns all created nodes with PIM URIs.
+
+```
+pim_create_edges(edges: [EdgeSpec]) → [Edge]
+```
+
+Create multiple edges in a single call. Each `EdgeSpec` contains source, target, type, and optional metadata. Returns all created edges with IDs.
+
+These are throughput tools, not confirmation tools. They execute immediately. They are used *within* the batch confirmation workflow (the executor calls them to commit an approved batch) and *by subagents* doing bulk ingestion work.
+
+#### Batch Confirmation
+
+For operations requiring user approval — initial import, high-risk bulk changes — the system wraps bulk operations in a propose/confirm workflow.
 
 ```
 pim_batch_propose(operations: [Operation]) → BatchProposal
@@ -214,7 +236,7 @@ The interpreter presents the summary to the user. The user can approve all, appr
 pim_batch_commit(batch_id: string, exclusions?: [int]) → BatchResult
 ```
 
-Execute a previously proposed batch. Optional exclusions list indexes of operations to skip. Returns the result of all committed operations.
+Execute a previously proposed batch. Optional exclusions list indexes of operations to skip. Internally uses `pim_create_nodes` and `pim_create_edges` for throughput. Returns the result of all committed operations.
 
 ```
 pim_batch_discard(batch_id: string) → void
@@ -222,5 +244,33 @@ pim_batch_discard(batch_id: string) → void
 
 Discard a proposed batch without executing.
 
-The batch workflow is required (not optional) during initial import and for any operation that would create more than 5 nodes in a single action. The interpreter must present the proposal to the user before the executor commits it. This prevents the system from silently creating dozens of objects without the user's awareness or consent.
+The batch confirmation workflow is required (not optional) during initial import and for any operation that would create more than 5 nodes in a single action. The interpreter must present the proposal to the user before the executor commits it.
+
+### Ingestion at Scale
+
+Testing revealed several patterns for bulk ingestion that subagents should follow:
+
+**Pre-partition large workloads.** When a subagent's workload exceeds its context window (e.g., 366 emails with ~5 edges each), the interpreter or executor should pre-partition the data into chunks and dispatch parallel subagents with structured data (JSON arrays of node/edge specs), not free-form instructions. A subagent that receives "index these 366 emails" will hit the context wall. A subagent that receives a JSON array of 70 pre-extracted node specs will succeed.
+
+**One index entry per discrete object.** Every individual task, message, event, contact, and note becomes its own node. Do not create "summary nodes" for groups of objects (e.g., one node representing an entire OmniFocus project's tasks). Summary nodes break queryability — "what involves Sarah?" only works if each task she's involved in is its own node with its own edges.
+
+**Aggregation is appropriate only for undifferentiated collections.** A directory of 70 photos that the user treats as a single unit (not individually queryable) can be represented as a small number of aggregate resource nodes. But tasks, messages, contacts, and events are always individual nodes — they have distinct attributes, distinct relations, and distinct query paths.
+
+### Body-Level Extraction
+
+The content body of an unstructured object (message, note, entry, resource) is the richest source of relational signal in the graph. It must be used for extraction, not just summarization.
+
+**The forwarded-email problem.** In any context where communication is mediated — legal, enterprise, healthcare — messages arrive as forwards. The envelope headers (From/To/CC) identify who forwarded the message to you. The body contains the actual participants: the opposing counsel whose letter was forwarded, the doctor whose report was attached, the colleague whose message was quoted. Header-only extraction misses these entirely. A forwarded email from your attorney containing opposing counsel's letter should produce edges to both your attorney (from the headers) and opposing counsel (from the body).
+
+**The principle: extract from the body, not just the headers.** When ingesting any unstructured object, scan the content body for:
+
+- **Known contacts.** Match names and email addresses from the existing contact graph against the body text. Wire `involves` edges for any contact mentioned, discussed, or quoted — not just envelope participants.
+- **Topics and projects.** Match existing topic names, JD numbers, or project keywords against the body. Wire `belongs-to` edges when the content substantively relates to a topic.
+- **Embedded actions.** Identify requests, commitments, deadlines, and decisions in the body. These may generate new task or event nodes via extraction.
+- **Referenced documents.** Identify mentions of specific documents, filings, reports. Wire `references` edges to existing resource nodes, or create new resource nodes for documents not yet in the graph.
+- **Quoted participants.** In forwarded or replied messages, parse quoted headers (`From:`, `To:`, `Sent:`) embedded in the body to identify participants in the original exchange.
+
+This applies to all unstructured types, not just messages. A note that mentions Sarah and references the Q3 report should have edges to both. A journal entry that discusses a meeting with the GAL should have an `involves` edge to the GAL contact. The body is where the information lives — the attributes are just the envelope.
+
+**Implementation.** Body-level extraction runs as part of ingestion, not as a separate pass. When a subagent creates a node for an unstructured object, it reads the body (or excerpt), scans against the known contact list and topic list, and includes the resulting edges in the same batch as the node creation. If the subagent's context is too constrained for body scanning (e.g., bulk ingestion of hundreds of messages), a follow-up extraction pass should be scheduled immediately — not deferred indefinitely.
 
