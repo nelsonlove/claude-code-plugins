@@ -11,9 +11,14 @@ Traverse the graph from a contact node to compile a complete interaction history
 
 1. **Find the contact**: Use `pim_query_nodes(type="contact", filters={"text_search": "name"})`
 2. **Resolve identity**: If multiple matches, use `pim_resolve` to check for merged identities
-3. **Gather connections**: Use `pim_query_edges(target=<contact_uri>)` to find all related items
-4. **Group by type**: Organize results into messages, tasks, events, notes
-5. **Present dossier**: Show contact details + interaction timeline
+3. **Check for existing annotation**: Use `pim_query_edges(source=<contact_uri>, type="annotation-of")` — if a prior synthesis note exists, read it first as a baseline
+4. **Gather connections**: Use `pim_query_edges(target=<contact_uri>)` to find all related items
+5. **Group by type**: Organize results into messages, tasks, events, notes
+6. **Present dossier**: Show contact details + interaction timeline
+7. **Persist the synthesis**: After presenting a substantive dossier, save it as an agent-authored annotation note linked to the contact. This avoids re-synthesizing in the next session.
+   - If an existing annotation note exists, update it with `pim_update_node`
+   - If not, create one with `pim_create_node(type="note", attributes={"title": "About: <name>", "provenance": "agent_authored"}, body=<synthesis>)` and link with `pim_create_edge(source=<note_uri>, target=<contact_uri>, type="annotation-of")`
+   - The note is freely overwritable — regenerate as new information arrives
 
 ## Dossier Format
 
@@ -44,3 +49,4 @@ Traverse the graph from a contact node to compile a complete interaction history
 - Sort interactions chronologically, most recent first
 - Highlight open/active items (pending tasks, upcoming events)
 - If the contact has many interactions, summarize and offer to drill down
+- The annotation note is intelligence, not raw data — synthesize patterns, not just lists
