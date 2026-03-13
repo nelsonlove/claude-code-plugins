@@ -84,12 +84,12 @@ class TestExecutorAgent:
 
     def test_batch_create_with_error(self, setup):
         agent = ExecutorAgent(setup["orch"])
-        results = agent.batch_create([
-            {"type": "note", "attributes": {"title": "Good"}},
-            {"type": "invalid_type", "attributes": {"title": "Bad"}},
-        ])
-        assert results[0]["status"] == "created"
-        assert results[1]["status"] == "error"
+        # Bulk create is atomic — invalid type rolls back entire batch
+        with pytest.raises(ValueError, match="Invalid type"):
+            agent.batch_create([
+                {"type": "note", "attributes": {"title": "Good"}},
+                {"type": "invalid_type", "attributes": {"title": "Bad"}},
+            ])
 
     def test_batch_update(self, setup):
         agent = ExecutorAgent(setup["orch"])
