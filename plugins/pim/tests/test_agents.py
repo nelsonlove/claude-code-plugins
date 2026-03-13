@@ -84,12 +84,16 @@ class TestExecutorAgent:
 
     def test_batch_create_with_error(self, setup):
         agent = ExecutorAgent(setup["orch"])
+        count_before = setup["conn"].execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
         # Bulk create is atomic — invalid type rolls back entire batch
         with pytest.raises(ValueError, match="Invalid type"):
             agent.batch_create([
                 {"type": "note", "attributes": {"title": "Good"}},
                 {"type": "invalid_type", "attributes": {"title": "Bad"}},
             ])
+        # Verify nothing persisted — atomicity guarantee
+        count_after = setup["conn"].execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+        assert count_after == count_before
 
     def test_batch_update(self, setup):
         agent = ExecutorAgent(setup["orch"])

@@ -7,9 +7,6 @@ tools:
   - mcp__pim__pim_resolve
   - mcp__pim__pim_review
   - mcp__pim__pim_discover
-  - mcp__pim__pim_create_node
-  - mcp__pim__pim_create_edge
-  - mcp__pim__pim_update_node
   - mcp__pim__pim_decision_log
   - mcp__pim__pim_stats
 model: opus
