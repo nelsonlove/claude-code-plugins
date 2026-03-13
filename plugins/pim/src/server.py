@@ -346,13 +346,25 @@ def create_server() -> FastMCP:
             hints: Attribute hints (name, email, title, etc.)
         """
         results = orch.query_nodes(type, {"attributes": hints, "limit": 5})
+        candidate_dicts = [dict(r) for r in results]
         if not results:
+            orch._log_decision("resolve", str(hints), "low",
+                               evidence={"type": type, "hints": hints},
+                               resolution="not_found")
             return {"outcome": "not_found", "candidates": []}
         if len(results) == 1:
-            return {"outcome": "found", "node": dict(results[0]), "confidence": 1.0}
+            orch._log_decision("resolve", results[0]["id"], "low",
+                               evidence={"type": type, "hints": hints},
+                               candidates=candidate_dicts,
+                               resolution="found")
+            return {"outcome": "found", "node": candidate_dicts[0], "confidence": 1.0}
+        orch._log_decision("resolve", str(hints), orch._classify_risk("ambiguous_resolution"),
+                           evidence={"type": type, "hints": hints},
+                           candidates=candidate_dicts,
+                           resolution="ambiguous")
         return {
             "outcome": "ambiguous",
-            "candidates": [dict(r) for r in results],
+            "candidates": candidate_dicts,
             "confidence": 0.5,
         }
 
