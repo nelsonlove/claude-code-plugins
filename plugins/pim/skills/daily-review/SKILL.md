@@ -9,9 +9,9 @@ Assemble a contextual briefing of the user's day.
 
 ## Briefing Structure
 
-1. **Today's calendar**: Query events for today using `pim_query_nodes(type="event")` with date filters
-2. **Active tasks**: Query working-register tasks, especially flagged or due today
-3. **Inbox count**: Count scratch-register items across types
+1. **Today's calendar**: Query events with `pim_query_nodes(type="event", text_search="<today's date>")` or `attributes={"date": "<today>"}`
+2. **Active tasks**: Query `pim_query_nodes(type="task", register="working")`, especially flagged or due today
+3. **Inbox count**: Use `pim_review(register="scratch")` to get inbox items across types, or `pim_stats()` for counts
 4. **Recent activity**: What changed since last review (new messages, completed tasks)
 5. **Upcoming**: Next 2-3 days' events and deadlines
 

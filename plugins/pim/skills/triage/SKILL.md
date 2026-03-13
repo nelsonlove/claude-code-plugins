@@ -18,6 +18,7 @@ Process the scratch register across all adapters — the unified inbox sweep.
    - **Delete/close**: No longer needed
    - **Link**: Connect to existing topics, contacts, or related items
 4. **Execute**: Use `pim_update_node` to change registers, `pim_create_edge` for new links
+5. **Discover**: After promoting items, call `pim_discover(node_id=<uri>)` on each to surface connections that may have been missed. Auto-link high-confidence suggestions.
 
 ## Triage Order
 
