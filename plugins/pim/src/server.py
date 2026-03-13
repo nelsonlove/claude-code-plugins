@@ -133,6 +133,82 @@ def create_server() -> FastMCP:
         """
         return orch.confirm_operation(log_id)
 
+    # --- Bulk throughput tools ---
+
+    @mcp.tool()
+    def pim_create_nodes(
+        nodes: list[dict],
+    ) -> list[dict]:
+        """Create multiple nodes in a single call. Atomic — all succeed or all fail.
+
+        Each element: {type, attributes, body?, register?}
+        Use this instead of looping pim_create_node for bulk ingestion.
+
+        Args:
+            nodes: Array of node specs, each with type, attributes, and optional body/register
+        """
+        results = orch.create_nodes(nodes)
+        return [dict(n) for n in results]
+
+    @mcp.tool()
+    def pim_create_edges(
+        edges: list[dict],
+    ) -> list[dict]:
+        """Create multiple edges in a single call. Atomic — all succeed or all fail.
+
+        Each element: {source, target, type, metadata?}
+        Use this instead of looping pim_create_edge for bulk ingestion.
+
+        Args:
+            edges: Array of edge specs, each with source, target, type, and optional metadata
+        """
+        results = orch.create_edges(edges)
+        return [dict(e) for e in results]
+
+    # --- Batch confirmation tools ---
+
+    @mcp.tool()
+    def pim_batch_propose(
+        operations: list[dict],
+    ) -> dict:
+        """Propose a batch of operations for user review before execution.
+
+        Required for any operation creating more than 5 nodes, and for initial
+        import. The interpreter presents the summary; the user approves or
+        excludes specific operations.
+
+        Each operation: {action: "create_node"|"create_edge"|"update_node"|"close_node", ...params}
+
+        Args:
+            operations: Array of operation specs to propose
+        """
+        return orch.batch_propose(operations)
+
+    @mcp.tool()
+    def pim_batch_commit(
+        batch_id: str,
+        exclusions: list[int] | None = None,
+    ) -> dict:
+        """Execute a previously proposed batch. Uses bulk throughput tools internally.
+
+        Args:
+            batch_id: Batch ID from pim_batch_propose
+            exclusions: Optional list of operation indexes (0-based) to skip
+        """
+        return orch.batch_commit(batch_id, exclusions)
+
+    @mcp.tool()
+    def pim_batch_discard(
+        batch_id: str,
+    ) -> str:
+        """Discard a proposed batch without executing.
+
+        Args:
+            batch_id: Batch ID from pim_batch_propose
+        """
+        orch.batch_discard(batch_id)
+        return f"Batch {batch_id} discarded"
+
     # --- Edge lifecycle tools ---
 
     @mcp.tool()
