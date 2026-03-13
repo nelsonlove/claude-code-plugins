@@ -105,7 +105,7 @@ Not every object in the graph needs annotation. The right density of agent-gener
 **Default enrichment by type:**
 
 - **Resources** (bookmarks, files, saved articles): the agent generates a brief description on ingestion if the resource has readable content (a web page, a PDF). For opaque resources (a binary file, a login page), the agent records the title and URI but does not fabricate a description. If the user later asks about the resource, the agent can enrich at that point.
-- **Contacts**: the agent does not generate biographical notes by default. It lets the interaction history (messages, events, tasks involving the contact) serve as the contact's context. If the user asks "tell me about Sarah," the agent synthesizes from relations rather than from a pre-written note.
+- **Contacts**: the agent does not generate biographical notes by default. It lets the interaction history (messages, events, tasks involving the contact) serve as the contact's context. If the user asks "tell me about Sarah," the agent synthesizes from the graph neighborhood at query time. **After a substantive synthesis, the agent should persist the result as an agent-authored note linked to the contact via annotation-of.** This avoids re-synthesizing the same intelligence in the next session. The note is tagged `agent_authored` and is freely overwritable — the agent regenerates it as new information arrives. The contact schema stays lean (name, email, role); the rich context lives in the annotation.
 - **Messages**: the agent does not annotate individual messages. It may annotate *threads* (a summary of a conversation) when the thread is long or when the user explicitly processes it.
 - **Notes, entries, tasks, events, topics**: the agent does not generate annotations for objects the user already authored or explicitly created. These objects are their own metadata.
 
@@ -130,4 +130,3 @@ Relation discovery (described above) is a form of enrichment — the agent propo
 - **Background passes**: run discovery on the full graph periodically. High cost, diminishing returns as the graph matures. Default to weekly, adjustable.
 
 Discovery results above the confidence threshold become medium-risk write operations (the executor creates the edge on the interpreter's instruction, logged in the decision log). Results below the threshold are surfaced as suggestions during the next review.
-
