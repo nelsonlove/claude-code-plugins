@@ -22,6 +22,9 @@ def create_server() -> FastMCP:
     from src.enrichment import RelationDiscovery
     discovery = RelationDiscovery(orch=orch)
 
+    from src.agents import ConfigAgent
+    config_agent = ConfigAgent(orch=orch, conn=conn)
+
     mcp = FastMCP(
         "PIM",
         instructions=(
@@ -437,6 +440,36 @@ def create_server() -> FastMCP:
             limit: Max results (default 50)
         """
         return orch.get_decision_log(target=target, operation=operation, limit=limit)
+
+    # --- Config tools ---
+
+    @mcp.tool()
+    def pim_stats() -> dict:
+        """Get PIM system statistics — node/edge counts by type and register."""
+        return config_agent.get_stats()
+
+    @mcp.tool()
+    def pim_adapter_list() -> list[dict]:
+        """List all registered adapters with capabilities and health status."""
+        return config_agent.list_adapters()
+
+    @mcp.tool()
+    def pim_routing(
+        updates: dict | None = None,
+    ) -> dict:
+        """Read or update the adapter routing table.
+
+        Without arguments, returns the current routing. With updates dict,
+        merges changes (e.g. {"task": "omnifocus"}).
+
+        Args:
+            updates: Optional partial routing changes to merge
+        """
+        if updates:
+            current = config_agent.get_routing()
+            current.update(updates)
+            return config_agent.set_routing(current)
+        return config_agent.get_routing()
 
     return mcp
 
