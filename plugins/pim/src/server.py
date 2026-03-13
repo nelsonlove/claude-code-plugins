@@ -19,6 +19,9 @@ def create_server() -> FastMCP:
     internal = InternalAdapter(conn, data_dir)
     orch = Orchestrator(conn=conn, internal_adapter=internal, data_dir=data_dir)
 
+    from src.enrichment import RelationDiscovery
+    discovery = RelationDiscovery(orch=orch)
+
     mcp = FastMCP(
         "PIM",
         instructions=(
@@ -398,6 +401,27 @@ def create_server() -> FastMCP:
                         t = node["type"]
                         results.setdefault(t, []).append(dict(node))
         return {"scope": {"register": register, "type": type, "topic": topic, "contact": contact}, "results": results}
+
+    @mcp.tool()
+    def pim_discover(
+        node_id: str,
+        auto_create: bool = False,
+    ) -> dict:
+        """Discover potential relations for a node.
+
+        Analyzes attributes and content to suggest edges. With auto_create=True,
+        automatically creates low-risk relations (references, related-to, belongs-to)
+        that meet the confidence threshold.
+
+        Args:
+            node_id: PIM URI of the node to analyze
+            auto_create: If True, auto-create low-risk suggestions (default: False)
+        """
+        if auto_create:
+            created = discovery.auto_enrich(node_id)
+            return {"auto_created": created}
+        suggestions = discovery.discover_for_node(node_id)
+        return {"suggestions": suggestions}
 
     @mcp.tool()
     def pim_decision_log(
