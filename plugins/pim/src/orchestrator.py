@@ -27,6 +27,7 @@ class Orchestrator:
         self.data_dir = data_dir
         self.adapters: dict[str, Adapter] = {"internal": internal_adapter}
         self.routing: dict = {}
+        self._pending_batches: dict[str, dict] = {}
 
     @staticmethod
     def _validate_type(obj_type: str) -> None:
@@ -190,6 +191,176 @@ class Orchestrator:
         self._log_decision("close_node", pim_uri, risk, evidence={"mode": mode})
         adapter.close_node(native_id, mode)
         return None
+
+    # --- Bulk throughput operations ---
+
+    def create_nodes(self, specs: list[dict]) -> list[Node]:
+        """Create multiple nodes in a single transaction.
+
+        Each spec: {type, attributes, body?, register?}
+        Returns list of created nodes. Atomic — all succeed or all fail.
+        """
+        results = []
+        try:
+            for spec in specs:
+                obj_type = spec["type"]
+                self._validate_type(obj_type)
+                register = spec.get("register", "scratch")
+                self._validate_register(register)
+                adapter = self._resolve_adapter(obj_type, register)
+                risk = self._classify_risk("create_node", obj_type)
+                node = adapter.create_node(obj_type, spec["attributes"], spec.get("body"))
+                if register != "scratch":
+                    adapter.update_node(node["native_id"], {"register": register})
+                    node = adapter.resolve(node["native_id"])
+                log_id = self._log_decision("create_node", node["id"], risk)
+                self.conn.execute("UPDATE nodes SET source_op = ? WHERE id = ?", (log_id, node["id"]))
+                results.append(adapter.resolve(node["native_id"]))
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
+        return results
+
+    def create_edges(self, specs: list[dict]) -> list[Edge]:
+        """Create multiple edges in a single transaction.
+
+        Each spec: {source, target, type, metadata?}
+        Returns list of created edges. Atomic — all succeed or all fail.
+        """
+        results = []
+        try:
+            for spec in specs:
+                edge_type = spec["type"]
+                self._validate_edge_type(edge_type)
+                risk = self._classify_risk("create_edge", changes={"type": edge_type})
+                edge = self.internal.create_edge(spec["source"], spec["target"], edge_type, spec.get("metadata"))
+                self._log_decision("create_edge", edge["id"], risk,
+                                   evidence={"source": spec["source"], "target": spec["target"], "type": edge_type})
+                results.append(edge)
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
+        return results
+
+    # --- Batch confirmation workflow ---
+
+    def batch_propose(self, operations: list[dict]) -> dict:
+        """Propose a batch of operations for user review.
+
+        Each operation: {action: "create_node"|"create_edge"|"update_node"|"close_node", ...params}
+        Returns a proposal with batch_id, summary, and operation count.
+        """
+        batch_id = f"batch-{generate_id('batch')}"
+        # Build summary
+        action_counts: dict[str, int] = {}
+        type_counts: dict[str, int] = {}
+        for op in operations:
+            action = op.get("action", "unknown")
+            action_counts[action] = action_counts.get(action, 0) + 1
+            obj_type = op.get("type", op.get("edge_type", "unknown"))
+            type_counts[obj_type] = type_counts.get(obj_type, 0) + 1
+
+        proposal = {
+            "batch_id": batch_id,
+            "operation_count": len(operations),
+            "action_summary": action_counts,
+            "type_summary": type_counts,
+            "operations": operations,
+        }
+        self._pending_batches[batch_id] = proposal
+        self._log_decision("batch_propose", batch_id, RISK_MEDIUM,
+                           approval="pending_confirmation",
+                           evidence={"operation_count": len(operations), "summary": action_counts})
+        return {
+            "batch_id": batch_id,
+            "operation_count": len(operations),
+            "action_summary": action_counts,
+            "type_summary": type_counts,
+        }
+
+    def batch_commit(self, batch_id: str, exclusions: list[int] | None = None) -> dict:
+        """Execute a previously proposed batch.
+
+        Args:
+            batch_id: ID from batch_propose
+            exclusions: Optional list of operation indexes to skip
+        """
+        proposal = self._pending_batches.get(batch_id)
+        if proposal is None:
+            raise ValueError(f"No pending batch found: {batch_id!r}")
+
+        excluded = set(exclusions or [])
+        operations = [op for i, op in enumerate(proposal["operations"]) if i not in excluded]
+
+        # Partition into node creates, edge creates, and other operations
+        node_specs = []
+        edge_specs = []
+        other_ops = []
+        for op in operations:
+            action = op.get("action")
+            if action == "create_node":
+                node_specs.append({
+                    "type": op["type"],
+                    "attributes": op.get("attributes", {}),
+                    "body": op.get("body"),
+                    "register": op.get("register", "scratch"),
+                })
+            elif action == "create_edge":
+                edge_specs.append({
+                    "source": op["source"],
+                    "target": op["target"],
+                    "type": op["edge_type"],
+                    "metadata": op.get("metadata"),
+                })
+            else:
+                other_ops.append(op)
+
+        result: dict = {"nodes_created": [], "edges_created": [], "other_results": [], "errors": []}
+
+        # Bulk create nodes
+        if node_specs:
+            nodes = self.create_nodes(node_specs)
+            result["nodes_created"] = [n["id"] for n in nodes]
+
+        # Bulk create edges
+        if edge_specs:
+            edges = self.create_edges(edge_specs)
+            result["edges_created"] = [e["id"] for e in edges]
+
+        # Handle other operations individually
+        for op in other_ops:
+            try:
+                action = op.get("action")
+                if action == "update_node":
+                    self.update_node(op["id"], op.get("changes", {}))
+                    result["other_results"].append({"action": "update_node", "id": op["id"], "status": "ok"})
+                elif action == "close_node":
+                    self.close_node(op["id"], op.get("mode", "archive"))
+                    result["other_results"].append({"action": "close_node", "id": op["id"], "status": "ok"})
+                else:
+                    result["errors"].append({"action": action, "error": f"Unknown action: {action}"})
+            except Exception as e:
+                result["errors"].append({"action": op.get("action"), "error": str(e)})
+
+        result["excluded_count"] = len(excluded)
+        result["committed_count"] = len(operations)
+
+        # Clean up
+        del self._pending_batches[batch_id]
+        self._log_decision("batch_commit", batch_id, RISK_MEDIUM,
+                           evidence={"committed": len(operations), "excluded": len(excluded)})
+        return result
+
+    def batch_discard(self, batch_id: str) -> None:
+        """Discard a proposed batch without executing."""
+        if batch_id not in self._pending_batches:
+            raise ValueError(f"No pending batch found: {batch_id!r}")
+        del self._pending_batches[batch_id]
+        self._log_decision("batch_discard", batch_id, RISK_LOW)
+
+    # --- Single-operation edge methods ---
 
     def create_edge(self, source: str, target: str, edge_type: str, metadata: dict | None = None) -> Edge:
         self._validate_edge_type(edge_type)

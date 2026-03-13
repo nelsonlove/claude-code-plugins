@@ -110,20 +110,9 @@ class ExecutorAgent:
         self.orch = orch
 
     def batch_create(self, specs: list[dict]) -> list[dict]:
-        """Create multiple nodes in a batch."""
-        results = []
-        for spec in specs:
-            try:
-                node = self.orch.create_node(
-                    spec["type"],
-                    spec["attributes"],
-                    body=spec.get("body"),
-                    register=spec.get("register", "scratch"),
-                )
-                results.append({"status": "created", "id": node["id"]})
-            except Exception as e:
-                results.append({"status": "error", "error": str(e)})
-        return results
+        """Create multiple nodes in a batch using bulk throughput."""
+        nodes = self.orch.create_nodes(specs)
+        return [{"status": "created", "id": n["id"]} for n in nodes]
 
     def batch_update(self, updates: list[dict]) -> list[dict]:
         """Update multiple nodes in a batch."""
