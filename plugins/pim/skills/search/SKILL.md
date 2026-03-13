@@ -19,10 +19,10 @@ Search across the unified PIM graph using `pim_query_nodes` and `pim_query_edges
 
 | User intent | PIM operation |
 |-------------|--------------|
-| "find notes about X" | `pim_query_nodes(type="note", filters={"text_search": "X"})` |
-| "who did I meet with last week" | `pim_query_nodes(type="event", filters={"text_search": "..."})` then follow `involves` edges to contacts |
-| "tasks related to project Y" | `pim_query_edges(target=<topic_uri>, edge_type="belongs-to")` |
-| "everything about Alice" | `pim_query_nodes(type="contact", filters={"text_search": "Alice"})` then `pim_query_edges(target=<contact_uri>)` |
+| "find notes about X" | `pim_query_nodes(type="note", text_search="X")` |
+| "who did I meet with last week" | `pim_query_nodes(type="event", text_search="...")` then follow `involves` edges to contacts |
+| "tasks related to project Y" | `pim_query_edges(target=<topic_uri>, type="belongs-to")` |
+| "everything about Alice" | `pim_query_nodes(type="contact", text_search="Alice")` then `pim_query_edges(target=<contact_uri>)` |
 
 ## Tips
 

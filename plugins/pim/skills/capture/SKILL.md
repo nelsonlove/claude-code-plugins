@@ -13,7 +13,8 @@ Decompose unstructured input into typed PIM objects and create them.
 2. **Extract attributes**: Title, status, dates, people mentioned
 3. **Route**: Determine the right adapter based on the routing table
 4. **Create**: Use `pim_create_node` to create the object in the scratch register
-5. **Suggest links**: If the capture mentions known contacts or topics, suggest edges
+5. **Discover relations**: Call `pim_discover(node_id=<created_uri>)` on the new node to find connections to existing contacts, topics, and related items
+6. **Auto-link**: If discovery returns high-confidence suggestions (≥ 0.7), call `pim_discover(node_id=<created_uri>, auto_create=True)` to wire them automatically. Present any remaining suggestions to the user.
 
 ## Type Detection Heuristics
 
