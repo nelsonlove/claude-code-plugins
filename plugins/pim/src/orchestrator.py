@@ -68,7 +68,8 @@ class Orchestrator:
 
     def _log_decision(self, operation: str, target: str | None, risk_tier: str,
                       approval: str = "automatic", evidence: dict | None = None,
-                      candidates: list | None = None, resolution: str | None = None) -> str:
+                      candidates: list | None = None, resolution: str | None = None,
+                      _commit: bool = True) -> str:
         log_id = f"dl-{generate_id('log')}"
         self.conn.execute(
             """INSERT INTO decision_log (id, operation, target, risk_tier, approval, evidence, candidates, resolution)
@@ -78,7 +79,8 @@ class Orchestrator:
              json.dumps(candidates) if candidates else None,
              resolution)
         )
-        self.conn.commit()
+        if _commit:
+            self.conn.commit()
         return log_id
 
     # Edge types considered associative (low risk to create)
@@ -169,7 +171,9 @@ class Orchestrator:
         else:
             risk = self._classify_risk("update_node", parts["type"])
         self._log_decision("update_node", pim_uri, risk, evidence={"changes": changes})
-        return adapter.update_node(native_id, changes)
+        result = adapter.update_node(native_id, changes)
+        self.conn.commit()
+        return result
 
     def close_node(self, pim_uri: str, mode: str) -> dict | None:
         self._validate_close_mode(mode)
@@ -194,6 +198,7 @@ class Orchestrator:
             }
         self._log_decision("close_node", pim_uri, risk, evidence={"mode": mode})
         adapter.close_node(native_id, mode)
+        self.conn.commit()
         return None
 
     # --- Bulk throughput operations ---
@@ -217,7 +222,7 @@ class Orchestrator:
                 if register != "scratch":
                     adapter.update_node(node["native_id"], {"register": register})
                     node = adapter.resolve(node["native_id"])
-                log_id = self._log_decision("create_node", node["id"], risk)
+                log_id = self._log_decision("create_node", node["id"], risk, _commit=False)
                 self.conn.execute("UPDATE nodes SET source_op = ? WHERE id = ?", (log_id, node["id"]))
                 results.append(adapter.resolve(node["native_id"]))
             self.conn.commit()
@@ -240,7 +245,8 @@ class Orchestrator:
                 risk = self._classify_risk("create_edge", changes={"type": edge_type})
                 edge = self.internal.create_edge(spec["source"], spec["target"], edge_type, spec.get("metadata"))
                 self._log_decision("create_edge", edge["id"], risk,
-                                   evidence={"source": spec["source"], "target": spec["target"], "type": edge_type})
+                                   evidence={"source": spec["source"], "target": spec["target"], "type": edge_type},
+                                   _commit=False)
                 results.append(edge)
             self.conn.commit()
         except Exception:
@@ -266,11 +272,21 @@ class Orchestrator:
             obj_type = op.get("type", op.get("edge_type", "unknown"))
             type_counts[obj_type] = type_counts.get(obj_type, 0) + 1
 
+        # Identify high-risk operations
+        high_risk = []
+        for i, op in enumerate(operations):
+            action = op.get("action", "unknown")
+            op_type = op.get("type")
+            risk = self._classify_risk(action, op_type, op)
+            if risk == RISK_HIGH:
+                high_risk.append({"index": i, "action": action, "type": op_type, "risk": risk})
+
         proposal = {
             "batch_id": batch_id,
             "operation_count": len(operations),
             "action_summary": action_counts,
             "type_summary": type_counts,
+            "high_risk": high_risk,
             "operations": operations,
         }
         self._pending_batches[batch_id] = proposal
@@ -282,6 +298,8 @@ class Orchestrator:
             "operation_count": len(operations),
             "action_summary": action_counts,
             "type_summary": type_counts,
+            "high_risk": high_risk,
+            "operations": operations,
         }
 
     def batch_commit(self, batch_id: str, exclusions: list[int] | None = None) -> dict:

@@ -61,7 +61,7 @@ class InternalAdapter(Adapter):
                VALUES (?, ?, 'scratch', 'internal', ?, ?, ?, ?)""",
             (uri, obj_type, native_id, json.dumps(attributes), body_field, body_path)
         )
-        self.conn.commit()
+        # Commit managed by orchestrator for transaction control
 
         return self.resolve(native_id)
 
@@ -136,7 +136,7 @@ class InternalAdapter(Adapter):
                     (body, native_id)
                 )
 
-        self.conn.commit()
+        # Commit managed by orchestrator for transaction control
         return self.resolve(native_id)
 
     def close_node(self, native_id: str, mode: str) -> None:
@@ -182,7 +182,7 @@ class InternalAdapter(Adapter):
                     (json.dumps(attrs), native_id)
                 )
 
-        self.conn.commit()
+        # Commit managed by orchestrator for transaction control
 
     def sync(self, since: str | None = None) -> SyncResult:
         return SyncResult({"changed_nodes": [], "changed_edges": []})
@@ -210,7 +210,7 @@ class InternalAdapter(Adapter):
             "INSERT INTO edges (id, source, target, type, metadata) VALUES (?, ?, ?, ?, ?)",
             (edge_id, source, target, edge_type, json.dumps(metadata or {}))
         )
-        self.conn.commit()
+        # Commit managed by orchestrator for transaction control
         row = self.conn.execute("SELECT * FROM edges WHERE id = ?", (edge_id,)).fetchone()
         return self._row_to_edge(row)
 
@@ -253,13 +253,13 @@ class InternalAdapter(Adapter):
             return self._row_to_edge(row)
         params.append(edge_id)
         self.conn.execute(f"UPDATE edges SET {', '.join(sets)} WHERE id = ?", params)
-        self.conn.commit()
+        # Commit managed by orchestrator for transaction control
         row = self.conn.execute("SELECT * FROM edges WHERE id = ?", (edge_id,)).fetchone()
         return self._row_to_edge(row)
 
     def close_edge(self, edge_id: str) -> None:
         self.conn.execute("DELETE FROM edges WHERE id = ?", (edge_id,))
-        self.conn.commit()
+        # Commit managed by orchestrator for transaction control
 
     def _row_to_edge(self, row: sqlite3.Row) -> Edge:
         return Edge({
