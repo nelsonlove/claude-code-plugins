@@ -67,12 +67,16 @@ class Orchestrator:
         return self.internal
 
     def _log_decision(self, operation: str, target: str | None, risk_tier: str,
-                      approval: str = "automatic", evidence: dict | None = None) -> str:
+                      approval: str = "automatic", evidence: dict | None = None,
+                      candidates: list | None = None, resolution: str | None = None) -> str:
         log_id = f"dl-{generate_id('log')}"
         self.conn.execute(
-            """INSERT INTO decision_log (id, operation, target, risk_tier, approval, evidence)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (log_id, operation, target, risk_tier, approval, json.dumps(evidence or {}))
+            """INSERT INTO decision_log (id, operation, target, risk_tier, approval, evidence, candidates, resolution)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (log_id, operation, target, risk_tier, approval,
+             json.dumps(evidence or {}),
+             json.dumps(candidates) if candidates else None,
+             resolution)
         )
         self.conn.commit()
         return log_id
