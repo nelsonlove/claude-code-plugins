@@ -65,6 +65,20 @@
       }
     },
     {
+      "name": "things",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/nelsonlove/things-py.git",
+        "path": "plugin/claude-code",
+        "ref": "main"
+      },
+      "description": "Things.app task management — query tasks, projects, areas, and tags.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
+    },
+    {
       "name": "omnifocus",
       "source": {
         "source": "git-subdir",
