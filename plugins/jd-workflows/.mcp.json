@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "jd": {
-      "command": "jd",
-      "args": ["mcp"]
-    }
-  }
-}
