@@ -97,14 +97,14 @@
       }
     },
     {
-      "name": "clawtunes",
+      "name": "apple-music",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/nelsonlove/clawtunes.git",
+        "url": "https://github.com/nelsonlove/apple-music-py.git",
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Apple Music control and intelligent playlist curation via clawtunes CLI.",
+      "description": "Apple Music control and intelligent playlist curation.",
       "version": "0.3.0",
       "author": {
         "name": "Nelson Love"
