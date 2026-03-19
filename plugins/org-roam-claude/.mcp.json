@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "org-roam": {
+      "command": "/usr/bin/python3",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server.py"],
+      "env": {
+        "ORG_ROAM_DB": "${HOME}/org/org-roam.db",
+        "ORG_ROAM_DIR": "${HOME}/Documents/00-09 System/02 Notes/02.03 Org-roam"
+      }
+    }
+  }
+}
