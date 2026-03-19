@@ -139,6 +139,20 @@
       }
     },
     {
+      "name": "apple-mail",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/nelsonlove/apple-mail-py.git",
+        "path": "plugin/claude-code",
+        "ref": "main"
+      },
+      "description": "Apple Mail — search, triage, archive, and draft replies from the command line.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
+    },
+    {
       "name": "claude-tone",
       "source": "./plugins/claude-tone",
       "description": "Unique pentatonic notification tone per session. Plays on Stop and Notification events.",
