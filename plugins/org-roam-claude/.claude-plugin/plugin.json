@@ -1,0 +1,10 @@
+{
+  "name": "org-roam-claude",
+  "version": "0.1.0",
+  "description": "Query, explore, and create org-roam notes via MCP",
+  "author": {
+    "name": "Nelson Love"
+  },
+  "license": "MIT",
+  "keywords": ["org-roam", "notes", "knowledge-base", "emacs"]
+}
