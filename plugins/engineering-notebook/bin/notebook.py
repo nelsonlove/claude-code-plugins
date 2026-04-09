@@ -224,11 +224,11 @@ def summarize_session(session_id: str) -> str:
         result = subprocess.run(
             [
                 "claude",
-                "--bare",
                 "-p", SUMMARY_PROMPT,
                 "--resume", session_id,
                 "--no-session-persistence",
                 "--dangerously-skip-permissions",
+                "--disable-slash-commands",
                 "--output-format", "text",
                 "--model", "claude-haiku-4-5-20251001",
                 "--max-turns", "1",
