@@ -49,7 +49,7 @@
     {
       "name": "backlog",
       "source": "./plugins/backlog",
-      "description": "Backlog.md task tracker — manage markdown-based backlogs from Claude Code via MCP.",
+      "description": "Backlog.md task tracker \u2014 manage markdown-based backlogs from Claude Code via MCP.",
       "version": "1.0.0",
       "author": {
         "name": "Nelson Love"
@@ -58,7 +58,7 @@
     {
       "name": "dayone",
       "source": "./plugins/dayone",
-      "description": "Day One journaling — create, read, and update journal entries via MCP.",
+      "description": "Day One journaling \u2014 create, read, and update journal entries via MCP.",
       "version": "1.0.0",
       "author": {
         "name": "Nelson Love"
@@ -72,7 +72,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Things.app task management — query tasks, projects, areas, and tags.",
+      "description": "Things.app task management \u2014 query tasks, projects, areas, and tags.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
@@ -86,7 +86,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "OmniFocus task management — create, update, complete, and query tasks and projects via MCP.",
+      "description": "OmniFocus task management \u2014 create, update, complete, and query tasks and projects via MCP.",
       "version": "3.0.0",
       "author": {
         "name": "Nelson Love"
@@ -132,7 +132,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Apple Notes integration — read, create, search, and triage notes via MCP.",
+      "description": "Apple Notes integration \u2014 read, create, search, and triage notes via MCP.",
       "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
@@ -146,7 +146,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Apple Mail — search, triage, archive, and draft replies from the command line.",
+      "description": "Apple Mail \u2014 search, triage, archive, and draft replies from the command line.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
@@ -187,7 +187,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Safari bookmarks and reading list — search, export, and manage.",
+      "description": "Safari bookmarks and reading list \u2014 search, export, and manage.",
       "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
@@ -201,8 +201,17 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Personal information management — unified graph across notes, tasks, calendar, email, contacts, and more.",
+      "description": "Personal information management \u2014 unified graph across notes, tasks, calendar, email, contacts, and more.",
       "version": "1.0.0",
+      "author": {
+        "name": "Nelson Love"
+      }
+    },
+    {
+      "name": "engineering-notebook",
+      "source": "./plugins/engineering-notebook",
+      "description": "Auto-generate engineering journal entries from Claude Code sessions via claude --resume.",
+      "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
       }
