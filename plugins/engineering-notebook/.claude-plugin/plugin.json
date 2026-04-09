@@ -1,0 +1,5 @@
+{
+  "name": "engineering-notebook",
+  "version": "0.1.0",
+  "description": "Auto-generate engineering journal entries from Claude Code sessions"
+}
