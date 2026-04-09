@@ -224,6 +224,7 @@ def summarize_session(session_id: str) -> str:
         result = subprocess.run(
             [
                 "claude",
+                "--bare",
                 "-p", SUMMARY_PROMPT,
                 "--resume", session_id,
                 "--no-session-persistence",
