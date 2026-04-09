@@ -168,6 +168,7 @@ def index_session(path: Path) -> dict | None:
     return {
         "session_id": path.stem,
         "project": project_name_from_path(path),
+        "project_dir": str(path.parent),
         "date": logical_date(first_ts),
         "started_at": first_ts,
     }
@@ -218,7 +219,33 @@ def list_projects() -> list[tuple[str, int]]:
 # ── Session summarization ───────────────────────────────────────────
 
 
-def summarize_session(session_id: str) -> str:
+def _cwd_from_project_dir(project_dir: str) -> str | None:
+    """Derive the original working directory from a project dir path.
+
+    Project dirs are named like -Users-nelson-Documents, which maps to
+    /Users/nelson/Documents.  We resolve using the same hyphen-ambiguity
+    logic as project_name_from_path.
+    """
+    dirname = Path(project_dir).name.lstrip("-")
+    # Convert to filesystem path: replace hyphens with /
+    candidate = "/" + dirname.replace("-", "/")
+    if Path(candidate).is_dir():
+        return candidate
+    # Try the smart resolver
+    home_user = Path.home().name
+    prefix = f"Users/{home_user}/"
+    if candidate.startswith(f"/Users/{home_user}"):
+        raw = dirname[len(f"Users-{home_user}"):].lstrip("-")
+        if not raw:
+            return str(Path.home())
+        resolved = _resolve_hyphenated_path(Path.home(), raw)
+        real_path = resolved.replace("~/", str(Path.home()) + "/")
+        if Path(real_path).is_dir():
+            return real_path
+    return None
+
+
+def summarize_session(session_id: str, project_dir: str | None = None) -> str:
     """Resume a session and ask Claude to summarize it."""
     try:
         result = subprocess.run(
@@ -236,6 +263,7 @@ def summarize_session(session_id: str) -> str:
             capture_output=True,
             text=True,
             timeout=120,
+            cwd=_cwd_from_project_dir(project_dir) if project_dir else None,
         )
         output = result.stdout.strip()
         if not output or output.upper().startswith("SKIP"):
@@ -266,7 +294,7 @@ def summarize_all(sessions_by_project: dict, workers: int = 4,
                 if cache[sid]:
                     cached_results[project].append(cache[sid])
             else:
-                tasks.append((project, sid))
+                tasks.append((project, sid, s.get("project_dir")))
 
     if cached_results or (use_cache and cache):
         cached_count = sum(len(v) for v in cached_results.values())
@@ -288,8 +316,8 @@ def summarize_all(sessions_by_project: dict, workers: int = 4,
     print(f"  Summarizing {total} uncached sessions…", file=sys.stderr)
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(summarize_session, sid): (proj, sid)
-            for proj, sid in tasks
+            pool.submit(summarize_session, sid, pdir): (proj, sid)
+            for proj, sid, pdir in tasks
         }
         done = 0
         for future in as_completed(futures):
