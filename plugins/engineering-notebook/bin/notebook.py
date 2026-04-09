@@ -7,11 +7,13 @@ Usage:
     notebook.py --list-projects
 
 Indexes sessions by date/project, resumes each via `claude -p --resume`
-to get a summary, then assembles a journal entry.
+to get a summary, then assembles a journal entry.  Summaries are cached
+in ~/.local/share/engineering-notebook/ so re-runs are instant.
 """
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -21,6 +23,8 @@ from pathlib import Path
 
 DAY_START_HOUR = 5
 
+CACHE_DIR = Path.home() / ".local" / "share" / "engineering-notebook"
+
 SUMMARY_PROMPT = (
     "Summarize this session for an engineering journal entry. "
     "Write in first person. Focus on: what was the goal, what was accomplished, "
@@ -28,6 +32,50 @@ SUMMARY_PROMPT = (
     "If nothing substantive happened (just a greeting, quick lookup, or tool test), "
     "reply with only the word SKIP. Otherwise keep it to 2-5 sentences."
 )
+
+# Patterns that indicate the model tried to continue the session instead of summarizing
+_NOT_A_SUMMARY = re.compile(
+    r"(?i)^("
+    r"what (should|would|can) (I|we)|"
+    r"ready to (continue|help|assist)|"
+    r"(hi|hello|hey)\b|"
+    r"how can I (help|assist)|"
+    r"I('d| would) (be happy|love) to|"
+    r"let me know|"
+    r"is there anything"
+    r")"
+)
+
+
+def is_real_summary(text: str) -> bool:
+    """Return True if text looks like an actual summary, not a confused continuation."""
+    if not text or text.upper().strip() == "SKIP":
+        return False
+    if _NOT_A_SUMMARY.match(text.strip()):
+        return False
+    return len(text.strip()) > 30
+
+
+# ── Cache ──────────────────────────────────────────────────────────
+
+
+def _cache_path() -> Path:
+    return CACHE_DIR / "summaries.json"
+
+
+def load_cache() -> dict:
+    path = _cache_path()
+    if path.exists():
+        try:
+            return json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def save_cache(cache: dict):
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    _cache_path().write_text(json.dumps(cache, indent=2))
 
 
 # ── Session indexing ────────────────────────────────────────────────
@@ -191,6 +239,8 @@ def summarize_session(session_id: str) -> str:
         output = result.stdout.strip()
         if not output or output.upper().startswith("SKIP"):
             return ""
+        if not is_real_summary(output):
+            return ""
         return output
     except subprocess.TimeoutExpired:
         return f"[Session {session_id[:8]}… timed out]"
@@ -199,17 +249,42 @@ def summarize_session(session_id: str) -> str:
         sys.exit(1)
 
 
-def summarize_all(sessions_by_project: dict, workers: int = 4) -> dict:
+def summarize_all(sessions_by_project: dict, workers: int = 4,
+                  use_cache: bool = True) -> dict:
     """Summarize all sessions in parallel, grouped by project."""
+    cache = load_cache() if use_cache else {}
+
     # Flatten to (project, session) pairs
     tasks = []
+    cached_results = defaultdict(list)
     for project, sessions in sessions_by_project.items():
         for s in sessions:
-            tasks.append((project, s["session_id"]))
+            sid = s["session_id"]
+            if use_cache and sid in cache:
+                # Cache hit — empty string means SKIP
+                if cache[sid]:
+                    cached_results[project].append(cache[sid])
+            else:
+                tasks.append((project, sid))
 
-    results = defaultdict(list)
+    if cached_results or (use_cache and cache):
+        cached_count = sum(len(v) for v in cached_results.values())
+        skip_count = sum(
+            1 for proj_sessions in sessions_by_project.values()
+            for s in proj_sessions
+            if s["session_id"] in cache and not cache[s["session_id"]]
+        )
+        print(f"  Cache: {cached_count} summaries, {skip_count} skips",
+              file=sys.stderr)
+
+    results = dict(cached_results)
     total = len(tasks)
 
+    if total == 0:
+        print("  All sessions cached — nothing to summarize.", file=sys.stderr)
+        return results
+
+    print(f"  Summarizing {total} uncached sessions…", file=sys.stderr)
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
             pool.submit(summarize_session, sid): (proj, sid)
@@ -219,12 +294,18 @@ def summarize_all(sessions_by_project: dict, workers: int = 4) -> dict:
         for future in as_completed(futures):
             proj, sid = futures[future]
             done += 1
-            print(f"  [{done}/{total}] {sid[:12]}…", file=sys.stderr)
             summary = future.result()
+            print(f"  [{done}/{total}] {sid[:12]}… "
+                  f"{'SKIP' if not summary else 'ok'}", file=sys.stderr)
+            # Cache both summaries and skips
+            cache[sid] = summary
             if summary:
-                results[proj].append(summary)
+                results.setdefault(proj, []).append(summary)
 
-    return dict(results)
+    if use_cache:
+        save_cache(cache)
+
+    return results
 
 
 # ── Journal assembly ────────────────────────────────────────────────
@@ -271,8 +352,18 @@ def main():
     p.add_argument("--workers", type=int, default=4, help="Parallel summarizers (default: 4)")
     p.add_argument("--list-dates", action="store_true", help="List available dates")
     p.add_argument("--list-projects", action="store_true", help="List projects")
-    p.add_argument("--index-only", action="store_true", help="Show session index, don't summarize")
+    p.add_argument("--index-only", action="store_true", help="Show session index with cache status")
+    p.add_argument("--no-cache", action="store_true", help="Force re-summarize all sessions")
+    p.add_argument("--cache-stats", action="store_true", help="Show cache statistics")
     args = p.parse_args()
+
+    if args.cache_stats:
+        cache = load_cache()
+        summaries = sum(1 for v in cache.values() if v)
+        skips = sum(1 for v in cache.values() if not v)
+        print(f"Cache: {len(cache)} entries ({summaries} summaries, {skips} skips)")
+        print(f"Location: {_cache_path()}")
+        return
 
     if args.list_dates:
         for d, count in list_dates():
@@ -297,15 +388,21 @@ def main():
     total = sum(len(ss) for ss in projects.values())
 
     if args.index_only:
+        cache = load_cache()
         for proj, sessions in sorted(projects.items()):
             print(f"## {proj} ({len(sessions)} sessions)")
             for s in sessions:
-                print(f"  {s['session_id']}  {s['started_at']}")
+                sid = s["session_id"]
+                status = ""
+                if sid in cache:
+                    status = " [cached: summary]" if cache[sid] else " [cached: skip]"
+                print(f"  {sid}  {s['started_at']}{status}")
             print()
         return
 
     print(f"Summarizing {total} sessions for {date}…", file=sys.stderr)
-    summaries = summarize_all(projects, workers=args.workers)
+    summaries = summarize_all(projects, workers=args.workers,
+                              use_cache=not args.no_cache)
     print(assemble_journal(date, summaries))
 
 
