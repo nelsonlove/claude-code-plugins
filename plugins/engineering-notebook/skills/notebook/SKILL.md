@@ -18,8 +18,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/bin/notebook.py"
 
 This will:
 1. Index all sessions for today by project
-2. Resume each session via `claude -p --resume` (in parallel) to get a summary
-3. Print a combined journal entry
+2. Check cache — skip sessions already summarized
+3. Resume uncached sessions via `claude -p --resume` (in parallel) to get summaries
+4. Print a combined journal entry
 
 ### Options
 
@@ -28,7 +29,9 @@ This will:
 - `--workers N` — parallel summarizers (default: 4)
 - `--list-dates` — show all available dates
 - `--list-projects` — show all projects
-- `--index-only` — show session index without summarizing
+- `--index-only` — show session index with cache status
+- `--no-cache` — force re-summarize all sessions
+- `--cache-stats` — show cache statistics
 
 ## After the script runs
 
@@ -41,4 +44,4 @@ This will:
 3. **Ask the user** where to save:
    - **Screen** (default) — just print
    - **File** — write as `YYYY-MM-DD.md` to a directory they specify
-   - **Day One** — `dayone-cli create --journal "Engineering" --date YYYY-MM-DD --title "headline" --body "entry"`
+   - **Day One** — `cat entry.md | dayone -j "Claude Code" -d YYYY-MM-DD --all-day -t tag1 -t tag2 -- new`
