@@ -37,12 +37,18 @@ SUMMARY_PROMPT = (
 _NOT_A_SUMMARY = re.compile(
     r"(?i)^("
     r"what (should|would|can) (I|we)|"
-    r"ready to (continue|help|assist)|"
+    r"what'?s (next|the next)|"
+    r"ready to (continue|help|assist|proceed)|"
     r"(hi|hello|hey)\b|"
     r"how can I (help|assist)|"
     r"I('d| would) (be happy|love) to|"
+    r"I('m| am) ready to|"
     r"let me know|"
-    r"is there anything"
+    r"is there anything|"
+    r"back\.\s|"
+    r"I can see|"
+    r"I'll (help|write|prepare|summarize)|"
+    r"not logged in"
     r")"
 )
 
