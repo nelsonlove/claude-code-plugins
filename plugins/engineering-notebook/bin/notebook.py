@@ -14,6 +14,7 @@ in ~/.local/share/engineering-notebook/ so re-runs are instant.
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from collections import defaultdict
@@ -268,7 +269,7 @@ def summarize_session(session_id: str, project_dir: str | None = None) -> str:
             ],
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=180,
             cwd=_cwd_from_project_dir(project_dir) if project_dir else None,
         )
         output = result.stdout.strip()
@@ -340,7 +341,30 @@ def summarize_all(sessions_by_project: dict, workers: int = 4,
     if use_cache:
         save_cache(cache)
 
+    # Clean up orphan dirs left by --no-session-persistence
+    _cleanup_orphan_dirs()
+
     return results
+
+
+def _cleanup_orphan_dirs():
+    """Remove session dirs that have no matching .jsonl file."""
+    projects_dir = Path.home() / ".claude" / "projects"
+    if not projects_dir.exists():
+        return
+    skip_names = {"memory", "vercel-plugin", "subagents"}
+    for project_dir in projects_dir.iterdir():
+        if not project_dir.is_dir():
+            continue
+        try:
+            jsonl_ids = {f.stem for f in project_dir.glob("*.jsonl")}
+            for d in project_dir.iterdir():
+                if (d.is_dir() and d.name not in skip_names
+                        and not d.name.startswith(".")
+                        and d.name not in jsonl_ids):
+                    shutil.rmtree(d, ignore_errors=True)
+        except OSError:
+            continue
 
 
 # ── Journal assembly ────────────────────────────────────────────────
