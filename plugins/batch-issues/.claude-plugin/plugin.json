@@ -1,0 +1,5 @@
+{
+  "name": "batch-issues",
+  "version": "0.1.0",
+  "description": "Batch-process GitHub Issues in parallel worktrees — analyze, implement, test, and PR"
+}
