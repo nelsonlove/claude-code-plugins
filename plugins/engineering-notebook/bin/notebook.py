@@ -29,7 +29,9 @@ CACHE_DIR = Path.home() / ".local" / "share" / "engineering-notebook"
 SUMMARY_PROMPT = (
     "Summarize this session for an engineering journal entry. "
     "Write in first person. Focus on: what was the goal, what was accomplished, "
-    "key decisions made, problems encountered, and anything left unresolved. "
+    "key decisions made, problems encountered, anything left unresolved, "
+    "and any small follow-ups left dangling — uncommitted changes, files in "
+    "scratch locations, manual steps deferred, things to clean up next time. "
     "If nothing substantive happened (just a greeting, quick lookup, or tool test), "
     "reply with only the word SKIP. Otherwise keep it to 2-5 sentences."
 )
