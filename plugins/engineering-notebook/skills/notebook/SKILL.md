@@ -1,47 +1,55 @@
 ---
 name: notebook
-description: Generate an engineering journal entry from today's Claude Code sessions. Summarizes what you worked on, what shipped, what broke, and open threads.
+description: Save a Day One journal entry summarizing the current conversation. Captures what shipped, what broke, key decisions, and loose ends. Use when wrapping up a session.
 user_invocable: true
 ---
 
 # Engineering Notebook
 
-Generate a journal entry from today's Claude Code sessions.
+Save a Day One entry summarizing **the current conversation**. The assistant already has full session context; no subprocess, no `claude --resume`.
 
-## Usage
+## What to do
 
-Run the notebook script:
+### 1. Synthesize the conversation into a journal entry
+
+- **Headline** (≤10 words) — the main thing accomplished. Becomes the entry's H1.
+- **Body** — first person, honest, concise; write for future-you. Cover:
+  - What was the goal
+  - What shipped (concrete artifacts, files, PRs, commits)
+  - What broke and what you learned
+  - Key decisions made
+  - **Open questions** — forks in the road, design calls deferred for more thought
+  - **Loose ends** — small atoms that need 30 seconds next time: uncommitted changes, files in scratch dirs (`/tmp/*`, `~/Desktop/*`), manual steps deferred, scripts paused mid-run, test data to clean up
+- **Tags line** at the bottom: 3–7 relevant topic tags
+
+### 2. Save to Day One
+
+Use the `dayone2` CLI. Journal is **`Claude Code`**.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/bin/notebook.py"
+cat <<'EOF' | dayone2 -j "Claude Code" -d "$(date '+%Y-%m-%d %H:%M')" -t tag1 tag2 tag3 -- new
+# Headline
+
+Body…
+
+**Tags:** tag1, tag2, tag3
+EOF
 ```
 
-This will:
-1. Index all sessions for today by project
-2. Check cache — skip sessions already summarized
-3. Resume uncached sessions via `claude -p --resume` (in parallel) to get summaries
-4. Print a combined journal entry
+Notes:
 
-### Options
+- Pipe the body via stdin (heredoc) — keeps backticks, asterisks, and long bodies safe from shell interpretation.
+- Date format `YYYY-MM-DD HH:MM` is local time; `dayone2` accepts that without seconds or timezone.
+- The `--` before `new` ends the tag list.
+- Don't ask the user where to save — Day One, journal "Claude Code", always.
 
-- `--date YYYY-MM-DD` — summarize a specific date
-- `--project FRAGMENT` — filter to one project
-- `--workers N` — parallel summarizers (default: 4)
-- `--list-dates` — show all available dates
-- `--list-projects` — show all projects
-- `--index-only` — show session index with cache status
-- `--no-cache` — force re-summarize all sessions
-- `--cache-stats` — show cache statistics
+### 3. Confirm
 
-## After the script runs
+Briefly tell the user the entry was saved (one short sentence with the headline).
 
-1. Read the output — it contains per-session summaries grouped by project
-2. **Synthesize** the raw summaries into a polished journal entry:
-   - Merge overlapping sessions into coherent narratives
-   - Add a headline (≤10 words)
-   - Add topic tags and open questions
-   - First person, honest, concise — write for future-you
-3. **Ask the user** where to save:
-   - **Screen** (default) — just print
-   - **File** — write as `YYYY-MM-DD.md` to a directory they specify
-   - **Day One** — `cat entry.md | dayone -j "Claude Code" -d YYYY-MM-DD --all-day -t tag1 -t tag2 -- new`
+## Scope
+
+This skill summarizes **only the current session**. To backfill a past session:
+
+- Read the relevant JSONL at `~/.claude/projects/<encoded-project-dir>/<session-id>.jsonl` directly with the `Read` tool, then synthesize and push as above.
+- Use the `sessions` skill (`bin/sessions.py`) to find session IDs by date or audit disk usage.
