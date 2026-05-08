@@ -1,20 +1,18 @@
 ---
 name: notebook
-description: Save a Claude Code engineering-journal entry into the JD vault's .07 standard zero — daily note for the relevant category. Captures what shipped, what broke, key decisions, and loose ends. Use when wrapping up a session.
+description: Save a Claude Code engineering-journal entry as one timestamped file in the JD vault's 02.13 Engineering notebook. Captures what shipped, what broke, key decisions, and loose ends. Use when wrapping up a session.
 user_invocable: true
 ---
 
 # Engineering Notebook
 
-Save the current Claude Code session as an entry in the JD vault's `.07 Claude Code notebook for [scope]` slot for the relevant category. Daily-note format — sessions for the same category on the same day accumulate as `## HH:MM — <headline>` sections within a single dated file.
-
-See [[Engineering notebook — .07 standard zero design]] in the vault (`92023.10 Requirements & design/`) for the convention.
+Save the current Claude Code session as a single timestamped file in `02.13 Engineering notebook/` in the JD vault. One session per file. The canonical entry shape lives at `02.03 Templates for category 02/engineering-notebook entry.md` — keep this skill aligned with that template.
 
 ## What to do
 
 ### 1. Synthesize the entry
 
-- **Headline** (≤10 words) — the main thing accomplished. Becomes the section heading.
+- **Headline** (≤10 words) — the main thing accomplished. Becomes the H1.
 - **Body** — first person, honest, concise; write for future-you. Cover:
   - What was the goal
   - What shipped (concrete artifacts, files, PRs, commits)
@@ -22,97 +20,76 @@ See [[Engineering notebook — .07 standard zero design]] in the vault (`92023.1
   - Key decisions made
   - **Open questions** — forks in the road, design calls deferred
   - **Loose ends** — small atoms that need 30 seconds next time: uncommitted changes, files in scratch dirs (`/tmp/*`, `~/Desktop/*`), manual steps deferred, scripts paused mid-run, test data to clean up
-- **Tags line** at the bottom: 3–7 relevant topic tags
+- **Tags** — 3–7 relevant topical tags; go in frontmatter `tags:` after the leading `jd/agent`.
 
-### 2. Pick the JD category
+### 2. Resolve identity + timestamp
 
-Decide which `XX.07 Claude Code notebook for [scope]` folder this entry belongs in. Use session content (files touched, repos visited, topics discussed) to infer the dominant category.
+- **Session UUID:** the current Claude Code session's full UUID. Find it via `~/.claude/projects/<encoded>/<uuid>.jsonl` — the `<uuid>` is what you need. The 8-char prefix (lowercase hex) goes in the filename for disambiguation.
+- **Model ID:** active model ID, e.g. `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5`. Visible in the system prompt's environment block under "powered by the model".
+- **Timestamp:** local America/New_York time. Use ISO-8601 with explicit TZ offset (`-04:00` EDT, `-05:00` EST). Both `created` and `modified` start equal; if you're updating an entry later, bump `modified` only.
 
-- When the vault-categories context-injection lands (tracked in `02.02`), pick from the explicit list.
-- Until then, infer from session content. Common landing spots:
-  - Work on the JD system itself (the conventions, the `00.x` notes, the JD tooling design) → `00.07`
-  - Work in `02 LLMs & Agents` (Claude Code config, plugins, prompts) → `02.07`
-  - Work in `06 Digital tools` (apple-notes, safari, etc.) → `06.07`
-  - Work on a specific `92xxx` project — for now, this likely lands in `02.07` since project-level `.07` slots are not yet established. If the project's category later adopts `.07`, that becomes the right home.
-- **If the choice isn't obvious, ask the user before writing.** Do not guess silently.
-- Multi-category sessions: pick the dominant category; cross-reference others with `[[XX.07/YYYY-MM-DD]]` inline in the body.
-- Fallback: `00.07` for sessions that don't fit any specific category.
-
-### 3. Resolve the vault path
-
-The vault root is at `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/`. The path to a category's `.07` folder follows the JD shape:
+### 3. Build the filename
 
 ```
-<area>/<category>/XX.07 Claude Code notebook for [scope]/YYYY-MM-DD.md
+YYYY-MM-DDTHH-MM-SS — <uuid8>.md
 ```
 
-Concrete examples:
+- ISO timestamp with `-` instead of `:` (macOS-friendly).
+- Em-dash (U+2014) with single spaces around it.
+- `<uuid8>` is the first 8 hex chars of the session UUID, lowercased.
+- Example: `2026-05-08T00-16-00 — 7bd265f4.md`
 
-- `00.07` → `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/00-09 System/00 System management/00.07 Claude Code notebook for the system/YYYY-MM-DD.md`
-- `02.07` → `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/00-09 System/02 LLMs & Agents/02.07 Claude Code notebook for category 02/YYYY-MM-DD.md`
-- `06.07` → `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/00-09 System/06 Digital tools/06.07 Claude Code notebook for category 06/YYYY-MM-DD.md`
+### 4. Write the file
 
-`[scope]` follows the standard-zero convention: "the system" for `00`, "area XX-XX" for `x0` (x>0), "category XY" for `XY` (Y>0).
+Vault path:
 
-If `jd which XX.07` is available in the user's `jd` CLI and resolves the path, prefer that over hand-constructing the path. Otherwise hand-construct it from the area + category folder names.
+```
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/00-09 System/02 LLMs & Agents/02.13 Engineering notebook/<filename>.md
+```
 
-### 4. Write the entry
+Use the `Write` tool (the vault is on iCloud — shell heredocs can hit EPERM).
 
-Use the `Read` and `Write` tools (not shell heredocs — vault is on iCloud and shell ops can hit EPERM). Two cases:
-
-**Case A: today's `YYYY-MM-DD.md` does not exist yet.**
-
-Create it with this content (substitute `YYYY-MM-DD` with today's date, `HH:MM` with current local time, `<8-char-id>` with the first 8 hex characters of the current Claude Code session UUID, `<model-id>` with the active model ID — visible in the system prompt's environment block, e.g. `claude-opus-4-7` or `claude-sonnet-4-6`):
+Content shape — match the template at `02.03 Templates for category 02/engineering-notebook entry.md`:
 
 ````markdown
 ---
-title: YYYY-MM-DD
-created: YYYY-MM-DDTHH:mm
-modified: YYYY-MM-DDTHH:mm
-tags: [jd/agent]
+title: '<ISO timestamp, no TZ, e.g. 2026-05-08T00:16:00>'
+created: '<ISO timestamp with TZ, e.g. 2026-05-08T00:16:00-04:00>'
+modified: '<same as created on first write>'
+tags: [jd/agent, <tag1>, <tag2>, <tag3>]
+source: vault
+source-session-uuid: '<full session UUID>'
+source-model: '<model-id>'
+disabled rules:
+  - yaml-title-alias
+  - yaml-key-sort
 ---
 
-# YYYY-MM-DD
+# <headline>
 
-## HH:MM — <headline>
-*claude-code · session `<8-char-id>` · model `<model-id>`*
-
-<body>
-
-**Tags:** tag1, tag2, tag3
+<body — markdown, free-form. Common sections: ## What shipped, ## What I learned, ## Decisions, ## Open questions, ## Loose ends>
 ````
 
-**Case B: today's `YYYY-MM-DD.md` already exists.**
+`disabled rules` keeps the linter from rewriting the title to match the H1 (we want title=timestamp, H1=headline) and from reordering keys.
 
-Read it. Append the new section (with two blank lines as separator) to the end of the body:
+### 5. Confirm
 
-````markdown
-
-
-## HH:MM — <headline>
-*claude-code · session `<8-char-id>` · model `<model-id>`*
-
-<body>
-
-**Tags:** tag1, tag2, tag3
-````
-
-Update the frontmatter `modified` field to the current timestamp. Write the file back.
-
-### 5. Maintain the landing note
-
-After writing the daily file, ensure the category's landing note `XX.07 Claude Code notebook for [scope].md` exists and references today's daily file.
-
-- If the landing note doesn't exist, create it. Frontmatter shape mirrors the `{{category}}.07` template at `00.03 Templates for the system/`. Body should have a `## Daily notes` section listing `[[YYYY-MM-DD]]`.
-- If the landing note exists, read it; ensure today's `[[YYYY-MM-DD]]` is in the daily-notes list (no duplicates); write it back if changed.
-
-### 6. Confirm
-
-Tell the user briefly: which category was chosen, the path written, and the headline. One short sentence.
+Tell the user briefly: the timestamp + headline + path written. One short sentence.
 
 ## Scope
 
 This skill summarizes **only the current session**. To backfill a past session:
 
-- Read the relevant JSONL at `~/.claude/projects/<encoded-project-dir>/<session-id>.jsonl` directly with the `Read` tool, then synthesize and write as above.
+- Read the relevant JSONL at `~/.claude/projects/<encoded-project-dir>/<session-id>.jsonl` directly with the `Read` tool, then synthesize and write as above with the original session's UUID, model, and timestamp.
 - Use the `sessions` skill (`bin/sessions.py`) to find session IDs by date or audit disk usage.
+
+## Why one file per session (and not one per day)
+
+Earlier versions stacked sessions into daily notes (`YYYY-MM-DD.md` with `## HH:MM — headline` sections). The flat one-per-session shape replaces that:
+
+- Every entry has its own filename, sortable by ISO timestamp.
+- Provenance (session UUID, model) lives in frontmatter — structured, queryable, no body parsing needed.
+- No collision/merge logic: never read-then-append, just write.
+- Day One historical imports use the same shape (with `source: dayone` instead).
+
+If you find a same-second collision (rare), the `<uuid8>` suffix disambiguates.
