@@ -62,7 +62,7 @@ Use the `Read` and `Write` tools (not shell heredocs — vault is on iCloud and 
 
 **Case A: today's `YYYY-MM-DD.md` does not exist yet.**
 
-Create it with this content (substitute `YYYY-MM-DD` with today's date, `HH:MM` with current local time, `<8-char-id>` with the first 8 hex characters of the current Claude Code session UUID, `<model-id>` with the active model ID like `claude-opus-4-7`):
+Create it with this content (substitute `YYYY-MM-DD` with today's date, `HH:MM` with current local time, `<8-char-id>` with the first 8 hex characters of the current Claude Code session UUID, `<model-id>` with the active model ID — visible in the system prompt's environment block, e.g. `claude-opus-4-7` or `claude-sonnet-4-6`):
 
 ````markdown
 ---
