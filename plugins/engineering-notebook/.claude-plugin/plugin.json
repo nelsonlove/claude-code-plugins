@@ -1,5 +1,5 @@
 {
   "name": "engineering-notebook",
-  "version": "0.2.0",
-  "description": "Save the current Claude Code conversation to Day One as an engineering journal entry"
+  "version": "0.3.0",
+  "description": "Save the current Claude Code session as a daily-note entry in the JD vault's .07 standard zero (Claude Code notebook for [scope])"
 }
