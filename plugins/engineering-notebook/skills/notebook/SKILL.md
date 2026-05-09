@@ -1,12 +1,12 @@
 ---
 name: notebook
-description: Save the current Claude Code session as a per-session note in the JD vault's `02.13 Agent notebook/` folder. Filename `Agent note for YYYY-MM-DDTHH-MM.md`. Each session is tagged with the area / category / project scopes it touched. Use when wrapping up a session.
+description: Save the current Claude Code session as a `## HH:MM — <headline>` section appended to today's daily agent note in the JD vault's `02.13 Agent notebook/Agent note for YYYY-MM-DD.md`. Sessions accumulate as sections within a single dated file. Use when wrapping up a session.
 user_invocable: true
 ---
 
 # Engineering Notebook
 
-Save the current Claude Code session as a single file at `02.13 Agent notebook/Agent note for YYYY-MM-DDTHH-MM.md`. File ↔ session is 1:1 by session UUID — re-invocations of `/notebook` in the same session UPDATE the same file (matched on session ID), they don't create new files.
+Save the current Claude Code session as a `## HH:MM — <headline>` section appended to today's daily agent note at `02.13 Agent notebook/Agent note for YYYY-MM-DD.md`. If today's file doesn't exist yet, instantiate it from the template; otherwise append a section to the existing file.
 
 See [[.07 dashboards + agent notebook v2 design]] in the vault (`92023.10 Requirements & design/`) for the convention.
 
@@ -14,7 +14,7 @@ See [[.07 dashboards + agent notebook v2 design]] in the vault (`92023.10 Requir
 
 ### 1. Synthesize the entry
 
-- **Headline** (≤10 words) — the main thing accomplished. Becomes both the H1 and the frontmatter `title`.
+- **Headline** (≤10 words) — the main thing accomplished. Becomes the section's heading.
 - **Body** — first person, honest, concise; write for future-you. Cover:
   - What was the goal
   - What shipped (concrete artifacts, files, PRs, commits)
@@ -26,7 +26,7 @@ See [[.07 dashboards + agent notebook v2 design]] in the vault (`92023.10 Requir
 
 ### 2. Identify touched scopes
 
-List every area / category / project the session worked on. These become wikilinks in the body's `*scope:*` line (NOT frontmatter). Backlinks from each scope's landing note will surface this session — that's the discoverability mechanism.
+List every area / category / project the session worked on. These become wikilinks in the body's `*scope:*` line. Backlinks from each scope's landing note will surface this session.
 
 Examples:
 - System-meta work (JD conventions, `00.x` notes) → `[[00 System management]]`
@@ -38,41 +38,48 @@ If a session genuinely touches no specific scope, use `[[00 System management]]`
 
 ### 3. Resolve the path
 
-Compute `Agent note for YYYY-MM-DDTHH-MM.md` where `HH-MM` is the **first `/notebook` write timestamp for the current session**. If you've already invoked `/notebook` this session, the file exists at that earlier timestamp — find it (search `02.13 Agent notebook/` for files matching the session UUID in their frontmatter `session:` field). If this is the first invocation, use the current local time.
-
-Full path:
-
 ```
-~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/00-09 System/02 LLMs & Agents/02.13 Agent notebook/Agent note for YYYY-MM-DDTHH-MM.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/00-09 System/02 LLMs & Agents/02.13 Agent notebook/Agent note for YYYY-MM-DD.md
 ```
+
+Substitute `YYYY-MM-DD` with today's date.
 
 ### 4. Write the entry
 
 Use `Read` and `Write` (NOT shell heredocs — vault is on iCloud).
 
-**Case A: file doesn't exist (first `/notebook` for this session).**
+**Case A: file doesn't exist (first session of the day).**
 
-Instantiate from `00.03 Templates for the system/Agent note for {{date}}T{{time}}.md`. Substitute placeholders:
+Instantiate from `02.03 Templates for category 02/Agent note for {{date}}.md`. Substitute placeholders:
+- `{{date}}` → today's date `YYYY-MM-DD`
+- `{{time}}` → current local time `HH:MM`
 - `{{headline}}` → the headline
 - `{{session-id}}` → first 8 hex chars of the session UUID
 - `{{model-id}}` → active model (visible in the system prompt's environment block, e.g. `claude-opus-4-7`)
-- `{{date}}` → today's date `YYYY-MM-DD`
-- `{{time}}` → current local time `HH-MM`
 - `{{wikilink-1}}` … `{{wikilink-N}}` → wikilinks from Step 2 (use as many as needed; remove unused placeholders)
 - `{{body}}` → the body content
 - `{{topic-tag-N}}` → topic tags from Step 1
 
 Write the result to the resolved path.
 
-**Case B: file exists (re-invocation in same session).**
+**Case B: file exists (a session has already written today).**
 
-Read it. Update:
-- `modified` field in frontmatter → current timestamp (with `:` since this is YAML, not a filename)
-- Body — replace or extend, depending on what changed since last invocation
-- Authorship and scope lines — update if scopes changed
-- Topic tags line — update if tags changed
+Read it. Append a new section to the end of the body (preserve a single blank line as separator before the new `##` heading):
 
-Don't change `created`, `session`, or the filename — those identify the session.
+```markdown
+
+## HH:MM — <headline>
+*claude-code · session `<8-char-id>` · model `<model-id>`*
+*scope: [[area]] · [[category]] · [[project]]*
+
+<body>
+
+**Tags:** topic1, topic2, topic3
+```
+
+Update the frontmatter `modified` field to the current timestamp (with `:` since it's YAML, not a filename).
+
+If `/notebook` is invoked twice in the same session UUID on the same day (e.g., to revise an entry), find your existing section by matching the session ID in the authorship line and update that section in place rather than appending a new one.
 
 ### 5. Confirm
 
@@ -82,5 +89,5 @@ Tell the user briefly: the path written and the headline. One short sentence.
 
 This skill summarizes **only the current session**. To backfill a past session:
 
-- Read the relevant JSONL at `~/.claude/projects/<encoded-project-dir>/<session-id>.jsonl` directly with the `Read` tool, then synthesize and write a new `Agent note for ...` file using the past session's start time as `HH-MM`.
+- Read the relevant JSONL at `~/.claude/projects/<encoded-project-dir>/<session-id>.jsonl` directly with the `Read` tool, then synthesize and append/create as above using the past session's start time.
 - Use the `sessions` skill (`bin/sessions.py`) to find session IDs by date or audit disk usage.
