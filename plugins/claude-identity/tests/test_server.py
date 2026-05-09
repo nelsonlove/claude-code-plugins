@@ -59,7 +59,7 @@ def test_tools_list_includes_all_expected(mcp_client):
 
 
 def test_add_tag_self(mcp_client, tmp_home, sample_registry_entry):
-    sample_registry_entry(pid=mcp_client.proc.pid, session_id="aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    sample_registry_entry(pid=os.getpid(), session_id="aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     resp = mcp_client.call("tools/call", {"name": "add_tag", "arguments": {"tag": "02.14"}})
     text = resp["result"]["content"][0]["text"]
     body = json.loads(text)
@@ -68,7 +68,7 @@ def test_add_tag_self(mcp_client, tmp_home, sample_registry_entry):
 
 
 def test_list_tags_returns_current(mcp_client, tmp_home, sample_registry_entry):
-    sample_registry_entry(pid=mcp_client.proc.pid, session_id="bbbb2222-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    sample_registry_entry(pid=os.getpid(), session_id="bbbb2222-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
     mcp_client.call("tools/call", {"name": "add_tag", "arguments": {"tag": "x"}})
     mcp_client.call("tools/call", {"name": "add_tag", "arguments": {"tag": "y"}})
     resp = mcp_client.call("tools/call", {"name": "list_tags", "arguments": {}})
@@ -77,7 +77,7 @@ def test_list_tags_returns_current(mcp_client, tmp_home, sample_registry_entry):
 
 
 def test_match_uses_implicit_handle(mcp_client, tmp_home, sample_registry_entry):
-    sample_registry_entry(pid=mcp_client.proc.pid,
+    sample_registry_entry(pid=os.getpid(),
                           session_id="cccc3333-cccc-cccc-cccc-cccccccccccc",
                           name="fern")
     # No tags; matching on handle alone
@@ -87,7 +87,7 @@ def test_match_uses_implicit_handle(mcp_client, tmp_home, sample_registry_entry)
 
 
 def test_match_no_match(mcp_client, tmp_home, sample_registry_entry):
-    sample_registry_entry(pid=mcp_client.proc.pid,
+    sample_registry_entry(pid=os.getpid(),
                           session_id="dddd4444-dddd-dddd-dddd-dddddddddddd",
                           name="alice")
     resp = mcp_client.call("tools/call", {"name": "match", "arguments": {"scope": ["bob"]}})
