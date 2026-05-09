@@ -1,5 +1,5 @@
 {
   "name": "engineering-notebook",
   "version": "0.4.0",
-  "description": "Save the current Claude Code session as a single timestamped file in the JD vault's 02.13 Engineering notebook"
+  "description": "Save the current Claude Code session as a per-session, ISO-timestamped note in the JD vault's 02.13 Agent notebook/ folder. Each session is tagged with the scopes it touched."
 }
