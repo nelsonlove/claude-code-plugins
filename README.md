@@ -23,7 +23,6 @@ Published as the `claude-code-plugins-mac` marketplace package.
 | omnifocus | 3.0.0 | OmniFocus task management -- create, update, complete, and query tasks and projects via MCP | [omnifocus-py](https://github.com/nelsonlove/omnifocus-py) |
 | pim | 1.0.0 | Personal information management -- unified graph across notes, tasks, calendar, email, contacts | [pim](https://github.com/nelsonlove/pim) |
 | safari | 0.2.0 | Safari bookmarks and reading list -- search, export, and manage | [safari-py](https://github.com/nelsonlove/safari-py) |
-| session-name | 1.0.1 | Set a human-readable name for the current Claude session, displayed in the status line | local |
 | steipete-scripts | 0.0.1 | Skills ported from steipete/agent-scripts (attribution: Peter Steinberger) | local |
 | things | 0.1.0 | Things.app task management -- query tasks, projects, areas, and tags | [things-py](https://github.com/nelsonlove/things-py) |
 | tomatobar | 1.0.0 | Control TomatoBar Pomodoro timer and query session state | local |
