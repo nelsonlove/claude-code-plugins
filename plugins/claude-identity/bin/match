@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""Standalone matcher CLI for shell consumers (claude-threads poll hooks, etc.).
+
+Usage: match --subscriber "tag1,tag2" --scope "scopeA,scopeB"
+Exit:  0 = match, 1 = no match, 2 = usage error
+"""
+import argparse
+import sys
+from pathlib import Path
+
+# Add lib/ to path so we can import match
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from lib.match import match
+
+
+def main():
+    p = argparse.ArgumentParser(description="Match subscriber tags against scope tags.")
+    p.add_argument("--subscriber", required=True, help="CSV of subscriber patterns")
+    p.add_argument("--scope", required=True, help="CSV of target scope tags")
+    args = p.parse_args()
+
+    sub = [t.strip() for t in args.subscriber.split(",") if t.strip()]
+    scope = [t.strip() for t in args.scope.split(",") if t.strip()]
+    sys.exit(0 if match(sub, scope) else 1)
+
+
+if __name__ == "__main__":
+    main()

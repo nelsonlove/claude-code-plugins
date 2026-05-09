@@ -13,6 +13,7 @@ Published as the `claude-code-plugins-mac` marketplace package.
 | apple-music | 0.3.0 | Apple Music control and intelligent playlist curation | [apple-music-py](https://github.com/nelsonlove/apple-music-py) |
 | apple-notes | 0.2.0 | Apple Notes -- read, create, search, and triage notes via MCP | [apple-notes-py](https://github.com/nelsonlove/apple-notes-py) |
 | backlog | 1.0.0 | Backlog.md task tracker -- manage markdown-based backlogs via MCP | local |
+| claude-identity | 0.1.0 | Cross-session identity substrate: handle resolution, scope/tag CRUD, match function | local |
 | claude-notifications | 0.1.0 | Persistent cross-session notification inbox for automated agents and cron jobs | local |
 | claude-tone | 0.1.0 | Unique pentatonic notification tone per session (plays on Stop and Notification events) | local |
 | dayone | 1.0.0 | Day One journaling -- create, read, and update journal entries via MCP | local |

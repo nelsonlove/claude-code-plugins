@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {"name": "exact",         "subscriber": ["02.14"],            "scope": ["02.14"],                 "expected": true},
+    {"name": "glob_trail",    "subscriber": ["02.*"],             "scope": ["02.14"],                 "expected": true},
+    {"name": "glob_lead",     "subscriber": ["*-spec"],           "scope": ["02.14-spec"],            "expected": true},
+    {"name": "glob_question", "subscriber": ["02.1?"],            "scope": ["02.14"],                 "expected": true},
+    {"name": "glob_class",    "subscriber": ["[01]2.14"],         "scope": ["02.14"],                 "expected": true},
+    {"name": "no_match",      "subscriber": ["03.*"],             "scope": ["02.14"],                 "expected": false},
+    {"name": "path_recursive","subscriber": ["path:/repos/foo/**"],"scope": ["path:/repos/foo/src"],  "expected": true},
+    {"name": "path_exact",    "subscriber": ["path:/Users/nelson"],"scope": ["path:/Users/nelson"],   "expected": true},
+    {"name": "path_no_match", "subscriber": ["path:/repos/foo/**"],"scope": ["path:/repos/bar/baz"],  "expected": false},
+    {"name": "mixed_path_tag","subscriber": ["path:/repos/foo"],  "scope": ["02.14"],                 "expected": false},
+    {"name": "mixed_tag_path","subscriber": ["02.14"],            "scope": ["path:/repos/foo"],       "expected": false},
+    {"name": "multi_sub_one_match", "subscriber": ["xx", "02.*"], "scope": ["02.14"],                 "expected": true},
+    {"name": "multi_scope_one_match","subscriber": ["02.14"],     "scope": ["xx", "02.14"],           "expected": true},
+    {"name": "empty_subscriber","subscriber": [],                 "scope": ["02.14"],                 "expected": false},
+    {"name": "empty_scope",   "subscriber": ["02.14"],            "scope": [],                        "expected": false}
+  ]
+}

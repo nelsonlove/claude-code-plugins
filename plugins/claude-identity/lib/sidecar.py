@@ -1,0 +1,116 @@
+"""Sessions-meta sidecar CRUD.
+
+State at $HOME/.claude/sessions-meta/<sessionId>.json. Schema version 1:
+  {
+    "schema": 1,
+    "session_id": "<uuid>",
+    "tags": ["...", ...],
+    "added": "<iso8601>",
+    "modified": "<iso8601>"
+  }
+
+Writes are atomic via os.replace from a tmp file. Idempotent operations (e.g.
+adding an existing tag) are no-ops and do NOT bump mtime — required by the
+mtime-pull change-detection contract.
+"""
+import json
+import os
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+SCHEMA_VERSION = 1
+
+
+class SidecarPath:
+    def __init__(self, home, session_id):
+        self.path = Path(home) / ".claude" / "sessions-meta" / f"{session_id}.json"
+
+
+def _now_iso():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+def _read_or_empty(path: Path):
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _atomic_write(path: Path, data: dict):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp, str(path))
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def create_if_absent(home, session_id, default_tags):
+    """Initialize a sidecar if it doesn't exist. Return True if created, False if no-op."""
+    path = SidecarPath(home, session_id).path
+    if path.exists():
+        return False
+    ts = _now_iso()
+    _atomic_write(path, {
+        "schema": SCHEMA_VERSION,
+        "session_id": session_id,
+        "tags": list(default_tags),
+        "added": ts,
+        "modified": ts,
+    })
+    return True
+
+
+def read_sidecar(home, session_id):
+    """Read and return the sidecar dict, or None if absent or corrupt."""
+    return _read_or_empty(SidecarPath(home, session_id).path)
+
+
+def list_tags(home, session_id):
+    data = read_sidecar(home, session_id)
+    if not data:
+        return []
+    return list(data.get("tags", []))
+
+
+def add_tag(home, session_id, tag):
+    """Append tag; idempotent. Returns True if added (and mtime bumped), False if no-op."""
+    path = SidecarPath(home, session_id).path
+    data = _read_or_empty(path)
+    if data is None:
+        # Auto-init then add
+        create_if_absent(home, session_id, default_tags=[tag])
+        return True
+    if tag in data.get("tags", []):
+        return False  # idempotent: no mtime bump
+    data["tags"] = list(data.get("tags", [])) + [tag]
+    data["modified"] = _now_iso()
+    _atomic_write(path, data)
+    return True
+
+
+def remove_tag(home, session_id, tag):
+    """Remove tag; idempotent. Returns True if removed, False if absent (no mtime bump)."""
+    path = SidecarPath(home, session_id).path
+    data = _read_or_empty(path)
+    if data is None:
+        return False
+    tags = list(data.get("tags", []))
+    if tag not in tags:
+        return False
+    tags.remove(tag)
+    data["tags"] = tags
+    data["modified"] = _now_iso()
+    _atomic_write(path, data)
+    return True
