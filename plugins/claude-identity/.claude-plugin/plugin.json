@@ -1,0 +1,8 @@
+{
+  "name": "claude-identity",
+  "version": "0.1.0",
+  "description": "Cross-session identity substrate: session handle resolution, scope/tag CRUD, match function. Foundation for claude-threads, jd-context, and other plugins that need to know which sessions are alive and what they're interested in.",
+  "author": {
+    "name": "Nelson Love"
+  }
+}
