@@ -52,7 +52,7 @@ Use `Read` and `Write` (NOT shell heredocs — vault is on iCloud).
 
 **Case A: file doesn't exist (first `/notebook` for this session).**
 
-Instantiate from `00.03 Templates for the system/Agent note for {{date}}T{{time}}.md`. Substitute placeholders:
+Instantiate from `02.03 Templates for category 02/Agent note for {{date}}T{{time}}.md`. Substitute placeholders:
 - `{{headline}}` → the headline
 - `{{session-id}}` → first 8 hex chars of the session UUID
 - `{{model-id}}` → active model (visible in the system prompt's environment block, e.g. `claude-opus-4-7`)
