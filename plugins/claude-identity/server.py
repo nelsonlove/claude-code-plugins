@@ -37,11 +37,16 @@ def home():
 
 
 def _resolve_session_or_self(target):
-    """Return a session UUID; if target is None, use the current process's session."""
+    """Return a session UUID; if target is None, use the current process's session.
+
+    The MCP server runs as a subprocess of its CC session, so os.getppid()
+    gives the CC PID — not os.getpid(), which is the server's own PID and
+    has no registry entry.
+    """
     if target is None:
-        entry = registry.find_my_session(home(), os.getpid())
+        entry = registry.find_my_session(home(), os.getppid())
         if entry is None:
-            raise RuntimeError("Could not resolve own session (no registry entry for this PID)")
+            raise RuntimeError("Could not resolve own session (no registry entry for parent PID)")
         return entry["sessionId"], entry["handle"]
     sid = registry.resolve_handle_or_uuid_to_session_id(home(), target)
     return sid, registry.resolve_handle(home(), sid)
@@ -107,9 +112,9 @@ TOOLS = [
 
 def call_tool(name, args):
     if name == "whoami":
-        entry = registry.find_my_session(home(), os.getpid())
+        entry = registry.find_my_session(home(), os.getppid())
         if entry is None:
-            return {"error": "no registry entry for this PID"}
+            return {"error": "no registry entry for parent PID"}
         tags = sidecar.list_tags(home(), entry["sessionId"])
         return {
             "session_id": entry["sessionId"], "handle": entry["handle"],
