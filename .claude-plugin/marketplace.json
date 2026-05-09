@@ -15,15 +15,6 @@
       }
     },
     {
-      "name": "session-name",
-      "source": "./plugins/session-name",
-      "description": "Set a human-readable name for the current Claude session, displayed in the status line.",
-      "version": "1.0.1",
-      "author": {
-        "name": "Nelson Love"
-      }
-    },
-    {
       "name": "steipete-scripts",
       "source": "./plugins/steipete-scripts",
       "description": "Skills ported from steipete/agent-scripts. Attribution: Peter Steinberger (@steipete).",
