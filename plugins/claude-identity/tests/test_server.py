@@ -56,3 +56,47 @@ def test_tools_list_includes_all_expected(mcp_client):
     names = [t["name"] for t in resp["result"]["tools"]]
     expected = {"whoami", "list_sessions", "add_tag", "remove_tag", "list_tags", "match"}
     assert expected.issubset(set(names))
+
+
+def test_add_tag_self(mcp_client, tmp_home, sample_registry_entry):
+    sample_registry_entry(pid=os.getpid(), session_id="aaaa1111-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+    resp = mcp_client.call("tools/call", {"name": "add_tag", "arguments": {"tag": "02.14"}})
+    text = resp["result"]["content"][0]["text"]
+    body = json.loads(text)
+    assert body["added"] is True
+    assert "02.14" in body["tags"]
+
+
+def test_list_tags_returns_current(mcp_client, tmp_home, sample_registry_entry):
+    sample_registry_entry(pid=os.getpid(), session_id="bbbb2222-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    mcp_client.call("tools/call", {"name": "add_tag", "arguments": {"tag": "x"}})
+    mcp_client.call("tools/call", {"name": "add_tag", "arguments": {"tag": "y"}})
+    resp = mcp_client.call("tools/call", {"name": "list_tags", "arguments": {}})
+    body = json.loads(resp["result"]["content"][0]["text"])
+    assert set(body["tags"]) == {"x", "y"}
+
+
+def test_match_uses_implicit_handle(mcp_client, tmp_home, sample_registry_entry):
+    sample_registry_entry(pid=os.getpid(),
+                          session_id="cccc3333-cccc-cccc-cccc-cccccccccccc",
+                          name="fern")
+    # No tags; matching on handle alone
+    resp = mcp_client.call("tools/call", {"name": "match", "arguments": {"scope": ["fern"]}})
+    body = json.loads(resp["result"]["content"][0]["text"])
+    assert body["matches"] is True
+
+
+def test_match_no_match(mcp_client, tmp_home, sample_registry_entry):
+    sample_registry_entry(pid=os.getpid(),
+                          session_id="dddd4444-dddd-dddd-dddd-dddddddddddd",
+                          name="alice")
+    resp = mcp_client.call("tools/call", {"name": "match", "arguments": {"scope": ["bob"]}})
+    body = json.loads(resp["result"]["content"][0]["text"])
+    assert body["matches"] is False
+
+
+def test_unknown_session_returns_error(mcp_client):
+    resp = mcp_client.call("tools/call", {
+        "name": "list_tags", "arguments": {"session_id": "nonexistent"}
+    })
+    assert "error" in resp
