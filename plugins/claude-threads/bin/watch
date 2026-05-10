@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# claude-threads watcher — emits one event per peer thread message.
+# claude-threads watcher — emits one event per peer thread message that
+# matches your subscriber tags.
 #
-# Filters (in order):
+# Filters (in order, cheap → expensive):
 # 1. .md files only; skip dotfiles, .tmp, and the index file (filename matches
 #    pattern "<JD-ID> Inter-session threads.md")
 # 2. Message-state dedupe: tuple "<count>:<last_author>:<last_at>" only changes
 #    on real message activity. NOT the frontmatter `modified:` field — that
-#    gets bumped by Obsidian Linter on every pass without any message change,
-#    which would produce notification storms.
-# 3. Last `## <author>` skip if equal to MY_HANDLE env var (skip self-writes)
+#    gets bumped by Obsidian Linter on every pass without any message change.
+# 3. Subscriber-tag match (if MY_SESSION_ID is set): scope filter via
+#    lib.match (fnmatch + path: prefix). Skip if thread's scope doesn't
+#    overlap with this session's tags + implicit handle.
+# 4. Skip self-author writes — handle resolved fresh per event from the
+#    registry (so /rename mid-watch takes effect; v0.2.1's MY_HANDLE env var
+#    captured at arm-time was stale after rename).
 #
 # Modes:
 # - fswatch present (default): event-driven, near-zero idle cost
@@ -16,7 +21,10 @@
 # - fswatch absent + no WATCH_INTERVAL: error with usage
 #
 # Env vars (set by /claude-threads:watch slash command, or by hand):
-#   MY_HANDLE         — this session's handle (skip-self filter; required for filter)
+#   MY_SESSION_ID     — this session's UUID (preferred; enables fresh handle
+#                       resolution + scope filter)
+#   MY_HANDLE         — fallback only if MY_SESSION_ID absent (legacy v0.2.1
+#                       arg shape; doesn't refresh after /rename)
 #   WATCH_INTERVAL    — polling-fallback interval in seconds (optional)
 #   WATCH_THREADS_DIR — override threads_dir (defaults to claude-threads config)
 
@@ -43,10 +51,33 @@ if [ ! -d "$THREADS_DIR" ]; then
 fi
 
 MY_HANDLE="${MY_HANDLE:-}"
+MY_SESSION_ID="${MY_SESSION_ID:-}"
 INTERVAL="${WATCH_INTERVAL:-}"
 
-# Per-thread state for `modified:` dedupe (semantic version, not mtime).
-declare -A LAST_MODIFIED
+# Per-thread state for message-state dedupe. Key: filename. Value: composite
+# tuple "<count>:<last_author>:<last_at>" — only changes on real message
+# activity (append, edit-of-last). NOT the frontmatter `modified:` field —
+# Obsidian Linter bumps that on every pass without changing messages, which
+# in v0.2.1 produced notification storms when the Linter ran (the docstring
+# claimed the right semantics; the code didn't match. Fixed here for v0.2.2).
+declare -A LAST_STATE
+
+# extract_message_state FILE → echoes "<count>:<last_author>:<last_at>" or empty
+# Matches the same strict pattern as lib/poll._MESSAGE_HEADER_RE — requires an
+# ISO timestamp segment after the author so body subheadings like
+# `## Trust posture` are NOT counted as message headers.
+extract_message_state() {
+  awk '
+    /^## [^ ]+ · [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]/ {
+      count++
+      author = $2
+      at = $4
+    }
+    END {
+      if (count > 0) printf "%d:%s:%s", count, author, at
+    }
+  ' "$1"
+}
 
 process_file() {
   local file="$1"
@@ -64,21 +95,46 @@ process_file() {
   # Must be a thread file (has thread-id in frontmatter)
   grep -q "^thread-id:" "$file" 2>/dev/null || return
 
-  # Dedupe by frontmatter `modified:` value
-  local cur_modified
-  cur_modified=$(grep -m1 "^modified:" "$file" 2>/dev/null | sed "s/^modified:[[:space:]]*//")
-  [ -z "$cur_modified" ] && return
-  if [[ "${LAST_MODIFIED[$bn]:-}" == "$cur_modified" ]]; then
+  # Dedupe by message-state tuple — quiet through Linter passes and iCloud
+  # sync touches; only fires on real append/edit-of-last activity.
+  local cur_state
+  cur_state=$(extract_message_state "$file")
+  [ -z "$cur_state" ] && return
+  if [[ "${LAST_STATE[$bn]:-}" == "$cur_state" ]]; then
     return
   fi
-  LAST_MODIFIED[$bn]="$cur_modified"
+  LAST_STATE[$bn]="$cur_state"
 
-  # Skip self-author writes
-  local last_author
-  last_author=$(grep -E "^## [^ ]+ " "$file" 2>/dev/null | tail -1 | awk '{print $2}')
-  [ -z "$last_author" ] && return
-  if [ -n "$MY_HANDLE" ] && [[ "$last_author" == "$MY_HANDLE" ]]; then
-    return
+  local last_author current_handle scope_json matches
+  last_author=$(echo "$cur_state" | cut -d: -f2)
+
+  # If MY_SESSION_ID is set, use the Python filter helper to:
+  #   (a) resolve our CURRENT handle from the registry (catches /rename
+  #       mid-watch — v0.2.1's MY_HANDLE env was captured at arm-time)
+  #   (b) check whether the thread's scope matches our subscriber tags
+  #       (skips firehose: was missing in v0.2.1 entirely)
+  if [ -n "$MY_SESSION_ID" ]; then
+    scope_json=$(awk '
+      /^thread-scope:/ {
+        sub(/^thread-scope:[[:space:]]*/, "")
+        print
+        exit
+      }
+    ' "$file")
+    local filter_out
+    filter_out=$(python3 "$PLUGIN_DIR/lib/_watch_filter.py" \
+      "$MY_SESSION_ID" "$scope_json" "$HOME" 2>/dev/null)
+    current_handle=$(echo "$filter_out" | cut -f1)
+    matches=$(echo "$filter_out" | cut -f2)
+    [ "$matches" != "1" ] && return
+    if [ -n "$current_handle" ] && [[ "$last_author" == "$current_handle" ]]; then
+      return
+    fi
+  else
+    # Legacy v0.2.1 path: MY_HANDLE env (no scope filter, no fresh resolution)
+    if [ -n "$MY_HANDLE" ] && [[ "$last_author" == "$MY_HANDLE" ]]; then
+      return
+    fi
   fi
 
   local tid st last_msg
