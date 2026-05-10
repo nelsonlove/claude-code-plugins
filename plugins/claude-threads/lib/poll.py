@@ -16,10 +16,16 @@ from lib.match import match
 from lib.thread_store import list_threads
 
 
-# Match `## <author> · <timestamp>` (with or without trailing `· <model>` segment).
-# Header format changed in v0.2.1: model segment dropped when CLAUDE_MODEL is
-# unavailable (which is always — CC doesn't expose it to MCP subprocesses).
-_MESSAGE_HEADER_RE = re.compile(r"^## (\S+) · (\S+)(?: ·|\s*$)", re.MULTILINE)
+# Match `## <author> · <ISO-timestamp>` (with optional trailing `· <model>`).
+# Strict on the timestamp shape: requires YYYY-MM-DDTHH:MM:SS (with optional
+# fractional seconds and offset). This prevents body-content sub-headings like
+# `## Trust posture` from being mis-parsed as a message-header line with author
+# "Trust" — bug observed live in v0.2.1 when peers used `## ` for sectioning
+# inside their reply bodies.
+_MESSAGE_HEADER_RE = re.compile(
+    r"^## (\S+) · (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\S*)(?: · \S+)?\s*$",
+    re.MULTILINE,
+)
 
 
 def _message_state(path):
