@@ -65,8 +65,14 @@ def _atomic_write(path: Path, text: str):
 
 
 def create_thread(*, threads_dir, opener_handle, scope, topic,
-                  first_message, author_handle, author_model, prefix="thread-"):
-    """Create a new thread file. Returns {thread_id, path}."""
+                  first_message, author_handle, author_model, prefix="thread-",
+                  no_reply=False):
+    """Create a new thread file. Returns {thread_id, path}.
+
+    If no_reply=True, sets `thread-no-reply: true` in frontmatter — append_message
+    will refuse to add to it. Use for broadcast/announce threads where replies
+    would mtime-storm every subscriber.
+    """
     thread_id = _new_thread_id()
     date = _today_iso_date()
     path = _resolve_filename(threads_dir, date, _slug(topic))
@@ -82,6 +88,8 @@ def create_thread(*, threads_dir, opener_handle, scope, topic,
     fm[f"{prefix}status"] = "open"
     fm[f"{prefix}opener"] = opener_handle
     fm[f"{prefix}scope"] = list(scope)
+    if no_reply:
+        fm[f"{prefix}no-reply"] = True
 
     body = (
         f"\n# {topic}\n\n"
@@ -107,6 +115,16 @@ def _find_thread_path(threads_dir, thread_id, prefix="thread-"):
     return None
 
 
+class ThreadIsNoReply(Exception):
+    """Raised by append_message when the thread has thread-no-reply: true set."""
+    def __init__(self, thread_id):
+        self.thread_id = thread_id
+        super().__init__(
+            f"thread {thread_id} is marked no-reply (broadcast-only). "
+            f"Spawn a side thread tagged 're:{thread_id}' for discussion."
+        )
+
+
 def append_message(*, threads_dir, thread_id, author_handle, author_model,
                    message, prefix="thread-"):
     path = _find_thread_path(threads_dir, thread_id, prefix=prefix)
@@ -114,6 +132,8 @@ def append_message(*, threads_dir, thread_id, author_handle, author_model,
         raise KeyError(f"unknown thread-id: {thread_id}")
     text = path.read_text()
     fm, body = parse(text)
+    if fm.get(f"{prefix}no-reply") is True:
+        raise ThreadIsNoReply(thread_id)
     ts = _now_iso()
     new_block = (
         f"\n## {author_handle} · {ts} · {author_model}\n\n"
