@@ -28,22 +28,24 @@ def run(hook_event):
     state_dir.mkdir(parents=True, exist_ok=True)
     state_file = state_dir / f"{sid}.json"
 
-    # Read state: last_poll watermark + seen_modified per-thread map
+    # Read state: last_poll watermark + seen_messages per-thread map.
+    # NOTE: schema changed in v0.2.1 between commits — old `seen_modified` key
+    # is ignored; one round of false positives on first poll after upgrade.
     last_poll = 0
-    seen_modified = {}
+    seen_messages = {}
     if state_file.exists():
         try:
             state = json.loads(state_file.read_text())
             last_poll = state.get("last_poll", 0)
-            seen_modified = state.get("seen_modified", {}) or {}
+            seen_messages = state.get("seen_messages", {}) or {}
         except (json.JSONDecodeError, OSError):
             pass
 
-    # Poll. seen_modified is updated in-place by poll_for_session.
+    # Poll. seen_messages is updated in-place by poll_for_session.
     try:
         result = poll_for_session(
             home=home, session_id=sid, threads_dir=threads_dir,
-            last_poll_epoch=last_poll, seen_modified=seen_modified,
+            last_poll_epoch=last_poll, seen_messages=seen_messages,
         )
     except Exception as e:
         print(f"claude-threads {hook_event}: {e}", file=sys.stderr)
@@ -54,7 +56,7 @@ def run(hook_event):
         with state_file.open("w") as f:
             json.dump({
                 "last_poll": time.time(),
-                "seen_modified": result.get("seen_modified") or {},
+                "seen_messages": result.get("seen_messages") or {},
             }, f)
     except OSError as e:
         print(f"claude-threads {hook_event}: state write {e}", file=sys.stderr)

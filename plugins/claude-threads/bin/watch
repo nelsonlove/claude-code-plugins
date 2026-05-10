@@ -4,8 +4,10 @@
 # Filters (in order):
 # 1. .md files only; skip dotfiles, .tmp, and the index file (filename matches
 #    pattern "<JD-ID> Inter-session threads.md")
-# 2. Frontmatter `modified:` value dedupe (suppresses iCloud sync touches that
-#    bump mtime without changing content)
+# 2. Message-state dedupe: tuple "<count>:<last_author>:<last_at>" only changes
+#    on real message activity. NOT the frontmatter `modified:` field — that
+#    gets bumped by Obsidian Linter on every pass without any message change,
+#    which would produce notification storms.
 # 3. Last `## <author>` skip if equal to MY_HANDLE env var (skip self-writes)
 #
 # Modes:
