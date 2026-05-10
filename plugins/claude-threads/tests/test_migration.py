@@ -26,10 +26,10 @@ def test_migrate_renames_status_and_opener(tmp_path):
     assert "participants:" not in fm
     # New thread-id added
     assert "thread-id: " in text
-    # Scope added
-    assert "thread-scope: [02.14]" in text
-    # tags untouched
-    assert "tags: [jd/agent, jd/inter-session]" in text
+    # Scope added (always quoted on write per v0.2.1)
+    assert 'thread-scope: ["02.14"]' in text
+    # tags untouched (also re-emitted with quotes since they're a list value)
+    assert 'tags: ["jd/agent", "jd/inter-session"]' in text
     # Body preserved
     assert "Existing message body..." in text
 

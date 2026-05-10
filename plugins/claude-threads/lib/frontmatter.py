@@ -53,13 +53,28 @@ def _strip_quotes(s: str) -> str:
 
 def _format_scalar(v) -> str:
     if isinstance(v, list):
-        items = [_format_scalar(x) for x in v]
+        items = [_format_list_item(x) for x in v]
         return "[" + ", ".join(items) + "]"
     if isinstance(v, bool):
         return "true" if v else "false"
     if isinstance(v, int):
         return str(v)
     return str(v)
+
+
+def _format_list_item(v) -> str:
+    """Inside a flow sequence, always quote string items so the output
+    survives a round-trip through strict YAML parsers (Obsidian Linter, ruamel,
+    PyYAML). Bare scalars in flow sequences are ambiguous to standard parsers
+    when they contain spaces, dashes, dots, or anything that could parse as
+    another type — this caused fields to be silently blanked in v0.2.0."""
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int):
+        return str(v)
+    s = str(v)
+    escaped = s.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def write(fm, body):

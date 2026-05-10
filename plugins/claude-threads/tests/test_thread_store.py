@@ -27,7 +27,7 @@ def test_create_thread_writes_file_with_schema(tmp_home, threads_dir):
     assert "thread-id:" in text
     assert "thread-status: open" in text
     assert "thread-opener: alice" in text
-    assert "thread-scope: [02.14]" in text
+    assert 'thread-scope: ["02.14"]' in text
     assert "Initial message body" in text
 
 
