@@ -16,7 +16,10 @@ from lib.match import match
 from lib.thread_store import list_threads
 
 
-_MESSAGE_HEADER_RE = re.compile(r"^## (\S+) · (\S+) ·", re.MULTILINE)
+# Match `## <author> · <timestamp>` (with or without trailing `· <model>` segment).
+# Header format changed in v0.2.1: model segment dropped when CLAUDE_MODEL is
+# unavailable (which is always — CC doesn't expose it to MCP subprocesses).
+_MESSAGE_HEADER_RE = re.compile(r"^## (\S+) · (\S+)(?: ·|\s*$)", re.MULTILINE)
 
 
 def _message_state(path):
