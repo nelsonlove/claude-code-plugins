@@ -15,6 +15,7 @@ Published as the `claude-code-plugins-mac` marketplace package.
 | backlog | 1.0.0 | Backlog.md task tracker -- manage markdown-based backlogs via MCP | local |
 | claude-identity | 0.1.0 | Cross-session identity substrate: handle resolution, scope/tag CRUD, match function | local |
 | claude-notifications | 0.1.0 | Persistent cross-session notification inbox for automated agents and cron jobs | local |
+| claude-threads | 0.2.0 | Inter-session threaded conversations -- file-per-thread with 3 poll hooks; depends on claude-identity | local |
 | claude-tone | 0.1.0 | Unique pentatonic notification tone per session (plays on Stop and Notification events) | local |
 | dayone | 1.0.0 | Day One journaling -- create, read, and update journal entries via MCP | local |
 | homebrew-audit | 0.2.0 | Audit and triage Homebrew packages via an org-mode workflow with babel action blocks | local |
