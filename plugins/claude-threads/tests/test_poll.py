@@ -192,3 +192,27 @@ def test_poll_seen_messages_none_disables_dedupe(tmp_home, threads_dir, write_si
     assert len(r2["new_matches"]) == 1  # surfaces again, no dedupe
     assert r1["seen_messages"] is None
     assert r2["seen_messages"] is None
+
+
+def test_message_state_ignores_body_subheadings(tmp_home, threads_dir, write_sidecar):
+    """Body content like `## Trust posture` must NOT be parsed as a message
+    header — the strict regex requires a real ISO timestamp after the author.
+    Bug observed live in v0.2.1 when peers used `## ` for sectioning inside
+    reply bodies; their "Trust" subsection got mis-parsed as last_author."""
+    from lib.poll import _message_state
+    from lib.thread_store import create_thread, append_message
+    sid = "abcdabcd-abcd-abcd-abcd-abcdabcdabcd"
+    write_sidecar(sid, tags=["02.*"])
+    th = create_thread(threads_dir=threads_dir, opener_handle="alice", scope=["02.14"],
+                       topic="t", first_message="initial",
+                       author_handle="alice", author_model="x")
+    # Append a message whose BODY contains a `## Trust posture` line — this
+    # must NOT be parsed as a header (would otherwise show last_author=Trust).
+    append_message(threads_dir=threads_dir, thread_id=th["thread_id"],
+                   author_handle="bob", author_model="x",
+                   message="Reply text.\n\n## Trust posture\n\nA convention note.")
+    state = _message_state(th["path"])
+    assert state is not None
+    count, last_author, last_at = state
+    assert count == 2  # alice's + bob's, NOT counting the body subheading
+    assert last_author == "bob"  # not "Trust"
