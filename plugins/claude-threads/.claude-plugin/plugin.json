@@ -1,6 +1,6 @@
 {
   "name": "claude-threads",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Inter-session threaded conversations for Claude Code. Sessions exchange persistent multi-message threads filtered by subscription tags. Polls via SessionStart, UserPromptSubmit, and PostToolUse hooks (zero token cost when empty). Depends on claude-identity for handle resolution and the match function.",
   "author": {
     "name": "Nelson Love"

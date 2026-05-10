@@ -18,7 +18,7 @@ from lib.identity_client import (
 from lib.match import match
 
 
-VERSION = "0.2.0"
+VERSION = "0.2.3"
 
 
 def send(msg):
@@ -49,18 +49,20 @@ def _self_handle():
 
 TOOLS = [
     {"name": "start_thread",
-     "description": "Start a new thread. scope=[<tag>,...] (e.g. ['02.14', 'fern']); topic becomes filename slug; message is the first body. Author/handle is auto-resolved from caller's session. Set no_reply=true for broadcast/announce threads (replies refused to prevent mtime-storms).",
+     "description": "Start a new thread. scope=[<tag>,...] (e.g. ['jd/02.14', 'fern']); topic becomes filename slug; message is the first body. Author/handle is auto-resolved from caller's session. Set no_reply=true for broadcast/announce threads (replies refused to prevent mtime-storms). Optional `subject` overrides the first message's header subject (defaults to the thread topic).",
      "inputSchema": {"type": "object", "properties": {
          "scope": {"type": "array", "items": {"type": "string"}},
          "topic": {"type": "string"},
          "message": {"type": "string"},
+         "subject": {"type": "string", "description": "Header subject for the opening message. Defaults to the topic."},
          "no_reply": {"type": "boolean", "description": "Refuse replies (broadcast-only). Default false."},
      }, "required": ["scope", "topic", "message"]}},
     {"name": "reply_thread",
-     "description": "Append a message to an existing thread. thread_id is 8-char (or unique prefix ≥4).",
+     "description": "Append a message to an existing thread. thread_id is 8-char (or unique prefix ≥4). Optional `subject` sets the header subject for this message; if omitted, derived from the first non-empty line of the message body.",
      "inputSchema": {"type": "object", "properties": {
          "thread_id": {"type": "string"},
          "message": {"type": "string"},
+         "subject": {"type": "string", "description": "Header subject. Defaults to first line of message (truncated to 60 chars)."},
      }, "required": ["thread_id", "message"]}},
     {"name": "list_threads",
      "description": "List threads; by default filters by caller's subscribed tags. Optional scope_pattern overrides the filter; status filters by enum.",
@@ -112,16 +114,18 @@ def call_tool(name, args):
         return thread_store.create_thread(
             threads_dir=threads_dir, opener_handle=handle,
             scope=scope, topic=args["topic"], first_message=args["message"],
-            author_handle=handle, author_model=os.environ.get("CLAUDE_MODEL", "unknown"),
-            prefix=prefix, no_reply=bool(args.get("no_reply", False)),
+            author_handle=handle, prefix=prefix,
+            no_reply=bool(args.get("no_reply", False)),
+            subject=args.get("subject"),
         )
 
     if name == "reply_thread":
         tid = _resolve_thread_id(args["thread_id"], threads_dir)
         thread_store.append_message(
             threads_dir=threads_dir, thread_id=tid,
-            author_handle=handle, author_model=os.environ.get("CLAUDE_MODEL", "unknown"),
+            author_handle=handle,
             message=args["message"], prefix=prefix,
+            subject=args.get("subject"),
         )
         return {"ok": True, "thread_id": tid}
 
