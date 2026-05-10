@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""claude-threads post — one-shot CLI to write a thread message from anywhere.
+
+Inverse of bin/watch. Where watch reads peer events for the current session,
+post writes a message that any other session (or external script) can read.
+
+Usable from:
+- inside a CC session (shell escape, or another tool)
+- cron jobs / launchd agents (autonomous notifications)
+- shell scripts that want to ping CC sessions
+- any non-CC context that has read/write access to threads_dir
+
+Author handle resolution (in order):
+1. --as <handle>           explicit override
+2. $MY_HANDLE env var      set by parent CC session
+3. discover from $PPID     walk up to a CC session in the registry
+4. "external"              fallback for cron/scripts with no CC ancestor
+
+Usage:
+  bin/post --thread <id-or-prefix> "<message>"          reply to existing thread
+  bin/post --new --scope <csv> --topic "..." "<msg>"    start new thread
+  bin/post --to <handle> --topic "..." "<msg>"          shortcut for --new --scope <handle>
+  bin/post --new --scope announce --no-reply --topic "..." "<msg>"  broadcast
+
+On success: prints the thread_id to stdout, exits 0.
+On error: writes to stderr, exits non-zero.
+"""
+import argparse
+import os
+import sys
+from pathlib import Path
+
+# Reach plugin lib/
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from lib import config
+from lib.thread_store import (
+    create_thread, append_message, list_threads, ThreadIsNoReply,
+)
+from lib.identity_client import discover_my_session_id, read_session_handle
+
+
+def _resolve_handle(home, override):
+    """Return the author handle to use, in priority order."""
+    if override:
+        return override
+    env_handle = os.environ.get("MY_HANDLE", "").strip()
+    if env_handle:
+        return env_handle
+    # Walk parent PIDs looking for one with a CC registry entry
+    pid = os.getppid()
+    for _ in range(6):
+        sid = discover_my_session_id(home, pid)
+        if sid:
+            handle = read_session_handle(home, sid)
+            if handle:
+                return handle
+        # ps -o ppid= -p <pid>
+        try:
+            import subprocess
+            out = subprocess.check_output(
+                ["ps", "-o", "ppid=", "-p", str(pid)],
+                stderr=subprocess.DEVNULL,
+            ).strip()
+            pid = int(out)
+            if pid <= 1:
+                break
+        except Exception:
+            break
+    return "external"
+
+
+def _resolve_thread_id(threads_dir, prefix_or_id, fm_prefix):
+    """Accept full 8-char id or unique prefix ≥4. Raise on ambiguity."""
+    if len(prefix_or_id) < 4:
+        raise ValueError("thread-id prefix must be at least 4 chars")
+    matches = [
+        t for t in list_threads(threads_dir=threads_dir, prefix=fm_prefix)
+        if t["thread_id"].startswith(prefix_or_id)
+    ]
+    if not matches:
+        raise KeyError(f"no thread matches '{prefix_or_id}'")
+    if len(matches) > 1:
+        ids = [m["thread_id"] for m in matches]
+        raise ValueError(f"prefix '{prefix_or_id}' is ambiguous: {ids}")
+    return matches[0]["thread_id"]
+
+
+def main():
+    p = argparse.ArgumentParser(
+        prog="claude-threads-post",
+        description="One-shot post to a thread (reply or new).",
+    )
+    mode = p.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--thread", metavar="ID", help="reply to existing thread")
+    mode.add_argument("--new", action="store_true", help="start a new thread")
+    mode.add_argument("--to", metavar="HANDLE",
+                      help="shortcut: start new thread scoped to that handle")
+    p.add_argument("--scope", metavar="CSV", help="comma-separated scope tags (with --new)")
+    p.add_argument("--topic", metavar="STR", help="thread title (with --new or --to)")
+    p.add_argument("--no-reply", action="store_true",
+                   help="mark new thread as broadcast-only (replies refused)")
+    p.add_argument("--as", dest="author", metavar="HANDLE",
+                   help="explicit author handle (overrides $MY_HANDLE / PID lookup)")
+    p.add_argument("--model", default=os.environ.get("CLAUDE_MODEL", "external"),
+                   help="model name to record in attribution (default: $CLAUDE_MODEL or 'external')")
+    p.add_argument("message", help="message body")
+    args = p.parse_args()
+
+    home = os.path.expanduser("~")
+    cfg = config.load_config(home=home, project_root=os.getcwd())
+    threads_dir = Path(cfg["threads_dir"])
+    threads_dir.mkdir(parents=True, exist_ok=True)
+    fm_prefix = cfg["frontmatter_prefix"]
+
+    handle = _resolve_handle(home, args.author)
+
+    try:
+        if args.thread:
+            tid = _resolve_thread_id(threads_dir, args.thread, fm_prefix)
+            append_message(
+                threads_dir=threads_dir, thread_id=tid,
+                author_handle=handle, author_model=args.model,
+                message=args.message, prefix=fm_prefix,
+            )
+            print(tid)
+            return 0
+
+        # --new or --to
+        if args.to:
+            scope = [args.to]
+        elif args.scope:
+            scope = [s.strip() for s in args.scope.split(",") if s.strip()]
+        else:
+            print("--new requires --scope (or use --to <handle>)", file=sys.stderr)
+            return 2
+        if not args.topic:
+            print("--new and --to require --topic", file=sys.stderr)
+            return 2
+
+        result = create_thread(
+            threads_dir=threads_dir, opener_handle=handle, scope=scope,
+            topic=args.topic, first_message=args.message,
+            author_handle=handle, author_model=args.model,
+            prefix=fm_prefix, no_reply=args.no_reply,
+        )
+        print(result["thread_id"])
+        return 0
+    except ThreadIsNoReply as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 3
+    except KeyError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 4
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 5
+
+
+if __name__ == "__main__":
+    sys.exit(main())

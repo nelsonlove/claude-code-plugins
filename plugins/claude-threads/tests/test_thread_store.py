@@ -27,7 +27,7 @@ def test_create_thread_writes_file_with_schema(tmp_home, threads_dir):
     assert "thread-id:" in text
     assert "thread-status: open" in text
     assert "thread-opener: alice" in text
-    assert "thread-scope: [02.14]" in text
+    assert 'thread-scope: ["02.14"]' in text
     assert "Initial message body" in text
 
 
@@ -64,7 +64,7 @@ def test_filename_collision_appends_numeric(tmp_home, threads_dir, monkeypatch):
 def test_append_message_updates_modified(tmp_home, threads_dir):
     th = create_thread(threads_dir=threads_dir, opener_handle="a", scope=["x"],
                       topic="t", first_message="m1", author_handle="a", author_model="x")
-    import time; time.sleep(0.01)
+    import time; time.sleep(1.05)  # _now_iso is second-precision; need >1s to observe a bump
     append_message(threads_dir=threads_dir, thread_id=th["thread_id"],
                    author_handle="bob", author_model="claude-opus-4-7",
                    message="reply body")
@@ -108,3 +108,37 @@ def test_read_thread_returns_structured(tmp_home, threads_dir):
     assert out["scope"] == ["02.14"]
     assert len(out["messages"]) == 1
     assert "hello" in out["messages"][0]["body"]
+
+
+def test_create_thread_no_reply_writes_flag(tmp_home, threads_dir):
+    """no_reply=True writes thread-no-reply: true in frontmatter."""
+    from pathlib import Path
+    th = create_thread(threads_dir=threads_dir, opener_handle="a", scope=["announce"],
+                       topic="broadcast", first_message="m",
+                       author_handle="a", author_model="x", no_reply=True)
+    text = Path(th["path"]).read_text()
+    assert "thread-no-reply: true" in text
+
+
+def test_create_thread_default_omits_no_reply_flag(tmp_home, threads_dir):
+    """no_reply defaults to False; field is omitted entirely."""
+    from pathlib import Path
+    th = create_thread(threads_dir=threads_dir, opener_handle="a", scope=["02.14"],
+                       topic="t", first_message="m",
+                       author_handle="a", author_model="x")
+    text = Path(th["path"]).read_text()
+    assert "thread-no-reply" not in text
+
+
+def test_append_message_to_no_reply_thread_raises(tmp_home, threads_dir):
+    """append_message refuses no-reply threads with a clear error directing the
+    caller to spawn a side thread."""
+    from lib.thread_store import append_message, ThreadIsNoReply
+    th = create_thread(threads_dir=threads_dir, opener_handle="a", scope=["announce"],
+                       topic="t", first_message="m",
+                       author_handle="a", author_model="x", no_reply=True)
+    with pytest.raises(ThreadIsNoReply) as excinfo:
+        append_message(threads_dir=threads_dir, thread_id=th["thread_id"],
+                       author_handle="b", author_model="x", message="reply attempt")
+    assert th["thread_id"] in str(excinfo.value)
+    assert "side thread" in str(excinfo.value).lower()

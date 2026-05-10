@@ -49,11 +49,12 @@ def _self_handle():
 
 TOOLS = [
     {"name": "start_thread",
-     "description": "Start a new thread. scope=[<tag>,...] (e.g. ['02.14', 'fern']); topic becomes filename slug; message is the first body. Author/handle is auto-resolved from caller's session.",
+     "description": "Start a new thread. scope=[<tag>,...] (e.g. ['02.14', 'fern']); topic becomes filename slug; message is the first body. Author/handle is auto-resolved from caller's session. Set no_reply=true for broadcast/announce threads (replies refused to prevent mtime-storms).",
      "inputSchema": {"type": "object", "properties": {
          "scope": {"type": "array", "items": {"type": "string"}},
          "topic": {"type": "string"},
          "message": {"type": "string"},
+         "no_reply": {"type": "boolean", "description": "Refuse replies (broadcast-only). Default false."},
      }, "required": ["scope", "topic", "message"]}},
     {"name": "reply_thread",
      "description": "Append a message to an existing thread. thread_id is 8-char (or unique prefix ≥4).",
@@ -112,7 +113,7 @@ def call_tool(name, args):
             threads_dir=threads_dir, opener_handle=handle,
             scope=scope, topic=args["topic"], first_message=args["message"],
             author_handle=handle, author_model=os.environ.get("CLAUDE_MODEL", "unknown"),
-            prefix=prefix,
+            prefix=prefix, no_reply=bool(args.get("no_reply", False)),
         )
 
     if name == "reply_thread":
