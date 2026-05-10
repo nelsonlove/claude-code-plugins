@@ -4,6 +4,7 @@ Critical invariants:
 - Unknown keys preserved verbatim
 - `tags:` array NEVER touched by writer
 - Key order preserved on read+write that don't change content
+- List items always quoted on write (survives Obsidian Linter and other strict YAML parsers)
 """
 import pytest
 
@@ -15,9 +16,9 @@ created: 2026-05-09T11:55:00-04:00
 modified: 2026-05-09T12:09:00-04:00
 status: open
 opener: 6afef2c8
-participants: [6afef2c8, 7bd265f4]
-tags: [jd/agent, jd/inter-session]
-aliases: [foo]
+participants: ["6afef2c8", "7bd265f4"]
+tags: ["jd/agent", "jd/inter-session"]
+aliases: ["foo"]
 linter-yaml-title-alias: foo
 ---
 
@@ -69,3 +70,29 @@ def test_parse_preserves_iso_strings():
     fm, body = parse(SAMPLE)
     out = write(fm, body)
     assert "2026-05-09T11:55:00-04:00" in out
+
+
+def test_write_quotes_list_items_with_special_chars():
+    """List items with spaces, dashes, special chars must be quoted on write
+    so the output survives strict YAML parsers (Obsidian Linter etc.)."""
+    fm = {"aliases": ["cross-session test from 30503d7b"], "thread-scope": ["03.14"]}
+    out = write(fm, "")
+    assert 'aliases: ["cross-session test from 30503d7b"]' in out
+    assert 'thread-scope: ["03.14"]' in out
+
+
+def test_write_quotes_list_item_with_yaml_alias_char():
+    """Bare * in a flow sequence is a YAML alias reference; must be quoted to be a literal."""
+    fm = {"thread-scope": ["*"]}
+    out = write(fm, "")
+    assert 'thread-scope: ["*"]' in out
+
+
+def test_parse_and_write_round_trip_with_unquoted_input():
+    """Existing files with unquoted lists parse correctly; on next write they get
+    normalized to quoted form (one-time format upgrade for older files)."""
+    legacy = '---\naliases: [foo bar]\n---\n\nbody\n'
+    fm, body = parse(legacy)
+    assert fm["aliases"] == ["foo bar"]
+    out = write(fm, body)
+    assert 'aliases: ["foo bar"]' in out

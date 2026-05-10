@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# claude-threads watcher — emits one event per peer thread message.
+#
+# Filters (in order):
+# 1. .md files only; skip dotfiles, .tmp, and the index file (filename matches
+#    pattern "<JD-ID> Inter-session threads.md")
+# 2. Message-state dedupe: tuple "<count>:<last_author>:<last_at>" only changes
+#    on real message activity. NOT the frontmatter `modified:` field — that
+#    gets bumped by Obsidian Linter on every pass without any message change,
+#    which would produce notification storms.
+# 3. Last `## <author>` skip if equal to MY_HANDLE env var (skip self-writes)
+#
+# Modes:
+# - fswatch present (default): event-driven, near-zero idle cost
+# - fswatch absent + WATCH_INTERVAL=<seconds>: polling fallback at that rate
+# - fswatch absent + no WATCH_INTERVAL: error with usage
+#
+# Env vars (set by /claude-threads:watch slash command, or by hand):
+#   MY_HANDLE         — this session's handle (skip-self filter; required for filter)
+#   WATCH_INTERVAL    — polling-fallback interval in seconds (optional)
+#   WATCH_THREADS_DIR — override threads_dir (defaults to claude-threads config)
+
+set -u
+
+PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Resolve threads_dir (env override > config default)
+if [ -n "${WATCH_THREADS_DIR:-}" ]; then
+  THREADS_DIR="$WATCH_THREADS_DIR"
+else
+  THREADS_DIR=$(python3 -c "
+import sys, os
+sys.path.insert(0, '$PLUGIN_DIR')
+from lib.config import load_config
+cfg = load_config(home=os.path.expanduser('~'), project_root=os.getcwd())
+print(cfg['threads_dir'])
+")
+fi
+
+if [ ! -d "$THREADS_DIR" ]; then
+  echo "claude-threads-watch: threads_dir does not exist: $THREADS_DIR" >&2
+  exit 1
+fi
+
+MY_HANDLE="${MY_HANDLE:-}"
+INTERVAL="${WATCH_INTERVAL:-}"
+
+# Per-thread state for `modified:` dedupe (semantic version, not mtime).
+declare -A LAST_MODIFIED
+
+process_file() {
+  local file="$1"
+  [ -f "$file" ] || return
+  local bn
+  bn=$(basename "$file")
+  case "$bn" in
+    .*|*.tmp) return ;;
+  esac
+  [[ "$bn" == *.md ]] || return
+  # Skip JD index notes (filename pattern "<id> Inter-session threads.md")
+  case "$bn" in
+    *" Inter-session threads.md") return ;;
+  esac
+  # Must be a thread file (has thread-id in frontmatter)
+  grep -q "^thread-id:" "$file" 2>/dev/null || return
+
+  # Dedupe by frontmatter `modified:` value
+  local cur_modified
+  cur_modified=$(grep -m1 "^modified:" "$file" 2>/dev/null | sed "s/^modified:[[:space:]]*//")
+  [ -z "$cur_modified" ] && return
+  if [[ "${LAST_MODIFIED[$bn]:-}" == "$cur_modified" ]]; then
+    return
+  fi
+  LAST_MODIFIED[$bn]="$cur_modified"
+
+  # Skip self-author writes
+  local last_author
+  last_author=$(grep -E "^## [^ ]+ " "$file" 2>/dev/null | tail -1 | awk '{print $2}')
+  [ -z "$last_author" ] && return
+  if [ -n "$MY_HANDLE" ] && [[ "$last_author" == "$MY_HANDLE" ]]; then
+    return
+  fi
+
+  local tid st last_msg
+  tid=$(grep -m1 "^thread-id:" "$file" 2>/dev/null | awk '{print $2}')
+  st=$(grep -m1 "^thread-status:" "$file" 2>/dev/null | awk '{print $2}')
+  last_msg=$(awk 'BEGIN{RS="\n## "} END{print}' "$file" \
+    | sed -n '3,/^—/p' | sed '/^—/d' | tr '\n' ' ' | cut -c1-180)
+  echo "[$tid · $st · $last_author] $bn :: $last_msg"
+}
+
+# fswatch (event-driven) is the preferred mode
+if command -v fswatch >/dev/null; then
+  while IFS= read -r -d "" file; do
+    process_file "$file"
+  done < <(fswatch -0 --latency 0.5 "$THREADS_DIR")
+  exit $?
+fi
+
+# No fswatch — require explicit interval to enable polling fallback
+if [ -z "$INTERVAL" ]; then
+  cat >&2 <<EOF
+claude-threads-watch: fswatch not found and no polling interval set.
+
+Either install fswatch for event-driven mode (recommended):
+  brew install fswatch
+
+Or set WATCH_INTERVAL=<seconds> to enable polling fallback:
+  WATCH_INTERVAL=600 $0
+EOF
+  exit 1
+fi
+
+echo "claude-threads-watch: fswatch unavailable; polling every ${INTERVAL}s" >&2
+while true; do
+  for f in "$THREADS_DIR"/*.md; do
+    process_file "$f"
+  done
+  sleep "$INTERVAL"
+done
