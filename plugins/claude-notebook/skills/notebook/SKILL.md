@@ -1,14 +1,14 @@
 ---
 name: notebook
-description: Save the current Claude Code session as a `## HH:MM — <headline>` section appended to today's daily agent note in the JD vault's `02.13 Agent notebook/Agent note for YYYY-MM-DD.md`. Sessions accumulate as sections within a single dated file. Use when wrapping up a session.
+description: Save the current Claude Code session as a `## HH:MM — <headline>` section appended to today's daily agent note in the JD vault's `03.13 Agent notebook/Agent note for YYYY-MM-DD.md`. Sessions accumulate as sections within a single dated file. Use when wrapping up a session.
 user_invocable: true
 ---
 
-# Engineering Notebook
+# Claude Notebook
 
-Save the current Claude Code session as a `## HH:MM — <headline>` section appended to today's daily agent note at `02.13 Agent notebook/Agent note for YYYY-MM-DD.md`. If today's file doesn't exist yet, instantiate it from the template; otherwise append a section to the existing file.
+Save the current Claude Code session as a `## HH:MM — <headline>` section appended to today's daily agent note at `03.13 Agent notebook/Agent note for YYYY-MM-DD.md`. If today's file doesn't exist yet, instantiate it from the template; otherwise append a section to the existing file.
 
-See [[.07 dashboards + agent notebook v2 design]] in the vault (`92023.10 Requirements & design/`) for the convention.
+See [[.07 dashboards + agent notebook v2 design]] in the vault (`92030.10 Requirements & design/`) for the convention.
 
 ## What to do
 
@@ -30,8 +30,8 @@ List every area / category / project the session worked on. These become wikilin
 
 Examples:
 - System-meta work (JD conventions, `00.x` notes) → `[[00 System management]]`
-- Claude Code tooling (plugins, prompts, configs) → `[[02 LLMs & Agents]]`
-- Specific projects → `[[92005 jd-tools]]`, `[[92023 claude-code-plugins]]`, etc.
+- Claude Code tooling (plugins, prompts, configs) → `[[03 LLMs & agents]]`
+- Specific projects → `[[92005 jd-tools]]`, `[[92030 claude-code-plugins]]`, etc.
 - Areas → `[[90-99 Projects]]` for project-area meta-work
 
 If a session genuinely touches no specific scope, use `[[00 System management]]` as the catch-all.
@@ -39,7 +39,7 @@ If a session genuinely touches no specific scope, use `[[00 System management]]`
 ### 3. Resolve the path
 
 ```
-~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/00-09 System/02 LLMs & Agents/02.13 Agent notebook/Agent note for YYYY-MM-DD.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/00-09 System/03 LLMs & agents/03.13 Agent notebook/Agent note for YYYY-MM-DD.md
 ```
 
 Substitute `YYYY-MM-DD` with today's date.
@@ -50,7 +50,7 @@ Use `Read` and `Write` (NOT shell heredocs — vault is on iCloud).
 
 **Case A: file doesn't exist (first session of the day).**
 
-Instantiate from `02.03 Templates for category 02/Agent note for {{date}}.md`. Substitute placeholders:
+Instantiate from `03.03 Templates for category 03/Agent note for {{date}}.md`. Substitute placeholders:
 - `{{date}}` → today's date `YYYY-MM-DD`
 - `{{time}}` → current local time `HH:MM`
 - `{{headline}}` → the headline
