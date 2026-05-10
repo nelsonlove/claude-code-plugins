@@ -208,10 +208,10 @@
       }
     },
     {
-      "name": "engineering-notebook",
-      "source": "./plugins/engineering-notebook",
-      "description": "Auto-generate engineering journal entries from Claude Code sessions via claude --resume.",
-      "version": "0.1.0",
+      "name": "claude-notebook",
+      "source": "./plugins/claude-notebook",
+      "description": "Save the current Claude Code session as a timestamped section appended to today's daily agent note in the JD vault's 03.13 Agent notebook/. Sessions accumulate as `## HH:MM — <headline>` sections within `Agent note for YYYY-MM-DD.md`.",
+      "version": "0.6.0",
       "author": {
         "name": "Nelson Love"
       }
