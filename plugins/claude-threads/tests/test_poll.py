@@ -87,3 +87,67 @@ def test_poll_surfaces_peer_reply_even_if_we_opened_thread(
                               last_poll_epoch=0)
     assert len(result["new_matches"]) == 1
     assert result["new_matches"][0]["thread_id"] == th["thread_id"]
+
+
+def test_poll_seen_modified_dedupe_skips_unchanged_version(
+        tmp_home, threads_dir, write_sidecar):
+    """If we've already surfaced a thread at modified=X, don't surface it again
+    even if mtime > last_poll (which iCloud sync can spuriously trigger)."""
+    sid = "77777777-7777-7777-7777-777777777777"
+    write_sidecar(sid, tags=["02.*"])
+    th = create_thread(threads_dir=threads_dir, opener_handle="peer", scope=["02.14"],
+                       topic="t", first_message="m",
+                       author_handle="peer", author_model="x")
+    seen = {}
+    # First poll: thread is new → surfaces, seen_modified gets stamped
+    r1 = poll_for_session(home=tmp_home, session_id=sid,
+                          threads_dir=str(threads_dir),
+                          last_poll_epoch=0, seen_modified=seen)
+    assert len(r1["new_matches"]) == 1
+    stamped_modified = seen[th["thread_id"]]
+    assert stamped_modified  # was set
+    # Second poll: same modified value (no real write happened)
+    # Even with last_poll_epoch=0 (forces mtime check pass), seen dedupe blocks it
+    r2 = poll_for_session(home=tmp_home, session_id=sid,
+                          threads_dir=str(threads_dir),
+                          last_poll_epoch=0, seen_modified=seen)
+    assert r2["new_matches"] == []
+
+
+def test_poll_seen_modified_resurfaces_on_real_change(
+        tmp_home, threads_dir, write_sidecar):
+    """After a real write bumps the modified field, the dedupe should release."""
+    from lib.thread_store import append_message
+    sid = "88888888-8888-8888-8888-888888888888"
+    write_sidecar(sid, tags=["02.*"])
+    th = create_thread(threads_dir=threads_dir, opener_handle="peer", scope=["02.14"],
+                       topic="t", first_message="m1",
+                       author_handle="peer", author_model="x")
+    seen = {}
+    poll_for_session(home=tmp_home, session_id=sid, threads_dir=str(threads_dir),
+                     last_poll_epoch=0, seen_modified=seen)
+    # Append a new message → modified bumps
+    time.sleep(0.01)
+    append_message(threads_dir=threads_dir, thread_id=th["thread_id"],
+                   author_handle="peer", author_model="x", message="new content")
+    r = poll_for_session(home=tmp_home, session_id=sid, threads_dir=str(threads_dir),
+                        last_poll_epoch=0, seen_modified=seen)
+    assert len(r["new_matches"]) == 1
+
+
+def test_poll_seen_modified_none_disables_dedupe(tmp_home, threads_dir, write_sidecar):
+    """Backward-compatible: passing seen_modified=None (the default) gives v0.2.0
+    behavior — every poll surfaces matching threads regardless of prior surfacing."""
+    sid = "99999999-9999-9999-9999-999999999999"
+    write_sidecar(sid, tags=["02.*"])
+    create_thread(threads_dir=threads_dir, opener_handle="peer", scope=["02.14"],
+                  topic="t", first_message="m",
+                  author_handle="peer", author_model="x")
+    r1 = poll_for_session(home=tmp_home, session_id=sid,
+                          threads_dir=str(threads_dir), last_poll_epoch=0)
+    assert len(r1["new_matches"]) == 1
+    r2 = poll_for_session(home=tmp_home, session_id=sid,
+                          threads_dir=str(threads_dir), last_poll_epoch=0)
+    assert len(r2["new_matches"]) == 1  # surfaces again, no dedupe
+    assert r1["seen_modified"] is None
+    assert r2["seen_modified"] is None
