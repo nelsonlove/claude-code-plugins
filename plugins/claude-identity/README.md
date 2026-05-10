@@ -16,10 +16,34 @@ Or for development: clone `~/repos/claude-code-plugins/` and install locally.
 
 ## Slash commands
 
-- `/identity:whoami` — print this session's identity
-- `/identity:sessions` — list all live sessions
-- `/identity:scope add|rm|list [<tag>] [--session <handle>]` — manage tags
-- `/identity:match <scope-csv>` — debug scope-pattern matches
+- `/claude-identity:whoami` — print this session's identity
+- `/claude-identity:sessions` — list all live sessions
+- `/claude-identity:scope add|rm|list [<tag>] [--session <handle>]` — manage tags
+- `/claude-identity:match <scope-csv>` — debug scope-pattern matches
+- `/claude-identity:rename <handle>` — agent self-rename (v0.1.2). Equivalent to typing `/rename` but agent-callable. Validates handle format, rejects collisions with other live sessions.
+
+## Statusline integration
+
+Recommended statusline snippet to display this session's subscribed scope tags. Add to your `~/.claude/statusline-command.sh` (the script CC invokes per `settings.json`'s `statusLine` config):
+
+```bash
+# Subscribed scope tags from claude-identity's sessions-meta sidecar
+session_id=$(echo "$input" | jq -r '.session_id // empty')
+scope_tags=""
+if [ -n "$session_id" ]; then
+  sidecar="$HOME/.claude/sessions-meta/$session_id.json"
+  if [ -f "$sidecar" ]; then
+    scope_tags=$(jq -r '.tags // [] | join(", ")' < "$sidecar" 2>/dev/null)
+  fi
+fi
+
+# In your output assembly:
+if [ -n "$scope_tags" ]; then
+  printf '  scope: %s' "$scope_tags"
+fi
+```
+
+This reads the same sidecar file that `add_tag` / `remove_tag` write to, so the statusline updates as soon as you `/claude-identity:scope add foo`. No restart needed.
 
 ## Configuration
 
