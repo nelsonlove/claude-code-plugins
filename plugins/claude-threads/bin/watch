@@ -45,8 +45,30 @@ fi
 MY_HANDLE="${MY_HANDLE:-}"
 INTERVAL="${WATCH_INTERVAL:-}"
 
-# Per-thread state for `modified:` dedupe (semantic version, not mtime).
-declare -A LAST_MODIFIED
+# Per-thread state for message-state dedupe. Key: filename. Value: composite
+# tuple "<count>:<last_author>:<last_at>" — only changes on real message
+# activity (append, edit-of-last). NOT the frontmatter `modified:` field —
+# Obsidian Linter bumps that on every pass without changing messages, which
+# in v0.2.1 produced notification storms when the Linter ran (the docstring
+# claimed the right semantics; the code didn't match. Fixed here for v0.2.2).
+declare -A LAST_STATE
+
+# extract_message_state FILE → echoes "<count>:<last_author>:<last_at>" or empty
+# Matches the same strict pattern as lib/poll._MESSAGE_HEADER_RE — requires an
+# ISO timestamp segment after the author so body subheadings like
+# `## Trust posture` are NOT counted as message headers.
+extract_message_state() {
+  awk '
+    /^## [^ ]+ · [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]/ {
+      count++
+      author = $2
+      at = $4
+    }
+    END {
+      if (count > 0) printf "%d:%s:%s", count, author, at
+    }
+  ' "$1"
+}
 
 process_file() {
   local file="$1"
@@ -64,19 +86,19 @@ process_file() {
   # Must be a thread file (has thread-id in frontmatter)
   grep -q "^thread-id:" "$file" 2>/dev/null || return
 
-  # Dedupe by frontmatter `modified:` value
-  local cur_modified
-  cur_modified=$(grep -m1 "^modified:" "$file" 2>/dev/null | sed "s/^modified:[[:space:]]*//")
-  [ -z "$cur_modified" ] && return
-  if [[ "${LAST_MODIFIED[$bn]:-}" == "$cur_modified" ]]; then
+  # Dedupe by message-state tuple — quiet through Linter passes and iCloud
+  # sync touches; only fires on real append/edit-of-last activity.
+  local cur_state
+  cur_state=$(extract_message_state "$file")
+  [ -z "$cur_state" ] && return
+  if [[ "${LAST_STATE[$bn]:-}" == "$cur_state" ]]; then
     return
   fi
-  LAST_MODIFIED[$bn]="$cur_modified"
+  LAST_STATE[$bn]="$cur_state"
 
-  # Skip self-author writes
+  # Skip self-author writes (last_author is the second field of the tuple)
   local last_author
-  last_author=$(grep -E "^## [^ ]+ " "$file" 2>/dev/null | tail -1 | awk '{print $2}')
-  [ -z "$last_author" ] && return
+  last_author=$(echo "$cur_state" | cut -d: -f2)
   if [ -n "$MY_HANDLE" ] && [[ "$last_author" == "$MY_HANDLE" ]]; then
     return
   fi
