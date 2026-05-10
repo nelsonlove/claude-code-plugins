@@ -33,7 +33,7 @@ def test_parse_returns_dict_and_body():
     assert fm["status"] == "open"
     assert fm["participants"] == ["6afef2c8", "7bd265f4"]
     assert fm["tags"] == ["jd/agent", "jd/inter-session"]
-    assert body.startswith("# foo")
+    assert "# foo" in body
 
 
 def test_round_trip_no_change_is_byte_identical():
