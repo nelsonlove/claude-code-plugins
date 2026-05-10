@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [{
+      "hooks": [{"type": "command",
+                 "command": "${CLAUDE_PLUGIN_ROOT}/hooks/threads-session-start.sh"}]
+    }],
+    "UserPromptSubmit": [{
+      "hooks": [{"type": "command",
+                 "command": "${CLAUDE_PLUGIN_ROOT}/hooks/threads-user-prompt-submit.sh"}]
+    }],
+    "PostToolUse": [{
+      "hooks": [{"type": "command",
+                 "command": "${CLAUDE_PLUGIN_ROOT}/hooks/threads-post-tool-use.sh"}]
+    }]
+  }
+}
