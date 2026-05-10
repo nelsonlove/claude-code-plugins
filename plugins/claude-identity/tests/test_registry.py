@@ -65,3 +65,90 @@ def test_resolve_ambiguous_raises(tmp_home, sample_registry_entry, monkeypatch):
         resolve_handle_or_uuid_to_session_id(tmp_home, "fern")
     assert "fern" in str(excinfo.value)
     assert len(excinfo.value.candidates) == 2
+
+
+# ---------------------------------------------------------------------------
+# v0.1.2: set_handle (writes CC's `name` field via atomic-write)
+# ---------------------------------------------------------------------------
+
+def test_set_handle_writes_name_field(tmp_home, sample_registry_entry):
+    from lib.registry import set_handle
+    sample_registry_entry(pid=500, session_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    result = set_handle(tmp_home, my_pid=500, handle="cairn")
+    assert result == {"ok": True, "handle": "cairn", "previous": None}
+    import json
+    entry = json.loads((tmp_home / ".claude" / "sessions" / "500.json").read_text())
+    assert entry["name"] == "cairn"
+
+
+def test_set_handle_returns_previous_when_overwriting(tmp_home, sample_registry_entry):
+    from lib.registry import set_handle
+    sample_registry_entry(pid=501, session_id="bbbb1111-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                          name="old-name")
+    result = set_handle(tmp_home, my_pid=501, handle="new-name")
+    assert result["previous"] == "old-name"
+    assert result["handle"] == "new-name"
+
+
+def test_set_handle_normalizes_to_lowercase(tmp_home, sample_registry_entry):
+    from lib.registry import set_handle
+    sample_registry_entry(pid=502, session_id="cccc2222-cccc-cccc-cccc-cccccccccccc")
+    result = set_handle(tmp_home, my_pid=502, handle="  Cairn  ")
+    assert result["handle"] == "cairn"
+
+
+def test_set_handle_rejects_reserved_tokens(tmp_home, sample_registry_entry):
+    from lib.registry import set_handle, InvalidHandle
+    sample_registry_entry(pid=503, session_id="dddd3333-dddd-dddd-dddd-dddddddddddd")
+    for bad in ["*", "all", "any", "self", "external"]:
+        with pytest.raises(InvalidHandle):
+            set_handle(tmp_home, my_pid=503, handle=bad)
+
+
+def test_set_handle_rejects_uuid_prefix_shape(tmp_home, sample_registry_entry):
+    from lib.registry import set_handle, InvalidHandle
+    sample_registry_entry(pid=504, session_id="eeee4444-eeee-eeee-eeee-eeeeeeeeeeee")
+    with pytest.raises(InvalidHandle, match="UUID prefix"):
+        set_handle(tmp_home, my_pid=504, handle="abcdef12")
+
+
+def test_set_handle_rejects_invalid_chars(tmp_home, sample_registry_entry):
+    from lib.registry import set_handle, InvalidHandle
+    sample_registry_entry(pid=505, session_id="ffff5555-ffff-ffff-ffff-ffffffffffff")
+    for bad in ["a", "has spaces", "with/slash", "with.dot", "two-segment-name-extra"]:
+        with pytest.raises(InvalidHandle):
+            set_handle(tmp_home, my_pid=505, handle=bad)
+
+
+def test_set_handle_normalizes_uppercase(tmp_home, sample_registry_entry):
+    """Uppercase input is normalized to lowercase, not rejected."""
+    from lib.registry import set_handle
+    sample_registry_entry(pid=506, session_id="ffff6666-ffff-ffff-ffff-ffffffffffff")
+    result = set_handle(tmp_home, my_pid=506, handle="CAIRN")
+    assert result["handle"] == "cairn"
+
+
+def test_set_handle_collision_with_other_live_session(tmp_home, sample_registry_entry, monkeypatch):
+    from lib.registry import set_handle, HandleCollision
+    sample_registry_entry(pid=600, session_id="aaaa6666-aaaa-aaaa-aaaa-aaaaaaaaaaaa", name="taken")
+    sample_registry_entry(pid=601, session_id="bbbb6666-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+    monkeypatch.setattr("lib.registry.os.kill", lambda pid, sig: None)
+    with pytest.raises(HandleCollision) as excinfo:
+        set_handle(tmp_home, my_pid=601, handle="taken")
+    assert excinfo.value.taken_by_session_id == "aaaa6666-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+
+def test_set_handle_self_re_set_is_not_collision(tmp_home, sample_registry_entry, monkeypatch):
+    """Setting your own handle to its current value is fine, not a collision."""
+    from lib.registry import set_handle
+    sample_registry_entry(pid=700, session_id="cccc7777-cccc-cccc-cccc-cccccccccccc", name="cairn")
+    monkeypatch.setattr("lib.registry.os.kill", lambda pid, sig: None)
+    result = set_handle(tmp_home, my_pid=700, handle="cairn")
+    assert result["ok"] is True
+    assert result["handle"] == "cairn"
+
+
+def test_set_handle_unknown_pid_raises_keyerror(tmp_home):
+    from lib.registry import set_handle
+    with pytest.raises(KeyError, match="no registry entry"):
+        set_handle(tmp_home, my_pid=99999, handle="cairn")

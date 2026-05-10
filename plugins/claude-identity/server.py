@@ -107,6 +107,20 @@ TOOLS = [
             "required": ["scope"],
         },
     },
+    {
+        "name": "set_handle",
+        "description": "Set this session's handle by writing the `name` field of its registry entry. Equivalent to the user typing /rename, but callable by the agent. Validates: lowercase word-style names (2-32 chars, optional single hyphen segment, e.g. 'cairn', 'wren', 'jd-cli-audit'); rejects reserved tokens (*, all, any, none, self, external, unknown), UUID-prefix-looking names, and handles already taken by another live session.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "handle": {
+                    "type": "string",
+                    "description": "Proposed handle (lowercased on storage)",
+                },
+            },
+            "required": ["handle"],
+        },
+    },
 ]
 
 
@@ -148,6 +162,11 @@ def call_tool(name, args):
         if handle:
             sub.append(handle)  # implicit handle subscription
         return {"matches": match_fn(sub, args["scope"])}
+    if name == "set_handle":
+        # Always operates on self — the agent renames its own session, never
+        # someone else's. The pid is the parent CC session (same logic as
+        # whoami: MCP server runs as subprocess of the CC session).
+        return registry.set_handle(home(), os.getppid(), args["handle"])
     raise ValueError(f"Unknown tool: {name}")
 
 
@@ -173,6 +192,15 @@ def handle(msg):
             send({"jsonrpc": "2.0", "id": msg_id, "error": {
                 "code": -32602, "message": str(e),
                 "data": {"candidates": e.candidates},
+            }})
+        except registry.HandleCollision as e:
+            send({"jsonrpc": "2.0", "id": msg_id, "error": {
+                "code": -32602, "message": str(e),
+                "data": {"taken_by": e.taken_by_session_id},
+            }})
+        except registry.InvalidHandle as e:
+            send({"jsonrpc": "2.0", "id": msg_id, "error": {
+                "code": -32602, "message": str(e),
             }})
         except KeyError as e:
             send({"jsonrpc": "2.0", "id": msg_id, "error": {
