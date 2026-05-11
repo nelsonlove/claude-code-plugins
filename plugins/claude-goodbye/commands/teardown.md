@@ -21,18 +21,18 @@ Useful for: saving session state at a milestone, testing the teardown sequence b
    steps:
      - command: /<plugin>:<command> [args]
        description: <human-readable>
-       required: true|false
+       required: true|false   # optional; defaults to false if omitted
    ---
    ```
 
-   If frontmatter parsing fails or `steps` is missing/empty, abort with a clear error.
+   If frontmatter parsing fails or `steps` is missing/empty, abort with a clear error. If a step omits `required`, treat it as `required: false`.
 
 3. **Execute each step in order**:
    - Announce the step to the user: `Running step N/M: <description>` then the actual command.
    - Invoke the command exactly as written (it's a slash-command invocation by the agent on its own behalf).
-   - Capture success/failure. A step succeeds if the invocation returns without error and any verification described in the step's body completed.
+   - A step succeeds if the invocation returns without error. (No per-step custom verification — the user's individual slash commands own their own success semantics.)
    - **If a `required: true` step fails**: abort the rest of the sequence and surface the failure clearly. Subsequent steps are NOT run.
-   - **If a `required: false` step fails**: log it, continue.
+   - **If a `required: false` (or omitted) step fails**: log it, continue.
 
 4. **Report**: at the end, summarize which steps ran, which succeeded, which failed. If any required step failed, the overall teardown status is FAILED and `/goodbye` should refuse to kill until the teardown is resolved.
 
