@@ -5,12 +5,17 @@ no longer corresponds to a live entry in `~/.claude/sessions/<pid>.json`. These
 accumulate as sessions end (CC doesn't reap them); they then interfere with
 SessionStart's handle-collision check (block live sessions from picking their
 deterministic word).
+
+Removal uses `/usr/bin/trash` (macOS) so the user can recover from a false
+positive via the Trash UI. Falls back to `os.unlink` if trash isn't available.
 """
 import json
 import os
+import shutil
+import subprocess
 from pathlib import Path
 
-from lib import registry, sidecar
+from lib import registry
 
 
 def _meta_dir(home):
@@ -46,20 +51,45 @@ def find_stale_sidecars(home):
     return out
 
 
-def prune_stale_sidecars(home, dry_run=False):
-    """Remove stale sidecars. Returns dict {removed: [<path>], dry_run: bool}.
+def _trash_path():
+    """Return /usr/bin/trash if available, else None."""
+    if os.path.exists("/usr/bin/trash"):
+        return "/usr/bin/trash"
+    return shutil.which("trash")
 
-    When `dry_run=True`, lists what would be removed without touching anything.
+
+def _delete_file(path):
+    """Send file to macOS Trash via /usr/bin/trash; fall back to os.unlink."""
+    trash = _trash_path()
+    if trash:
+        result = subprocess.run([trash, path], capture_output=True, text=True)
+        if result.returncode == 0:
+            return True
+        # trash failed; fall through to unlink rather than leave orphan
+    try:
+        os.unlink(path)
+        return True
+    except OSError:
+        return False
+
+
+def prune_stale_sidecars(home, dry_run=False):
+    """Remove stale sidecars (sends to Trash via /usr/bin/trash when available).
+    Returns dict with `removed` (paths actually removed), `would_remove`
+    (paths that would be removed in dry-run), `stale` (all candidates),
+    and `dry_run`.
+
+    Recoverability: deletions go through macOS Trash, so a false positive
+    (e.g., a sidecar whose session was incorrectly classified as dead) can
+    be recovered from Trash. Falls back to `os.unlink` only if `/usr/bin/trash`
+    is unavailable.
     """
     candidates = find_stale_sidecars(home)
     removed = []
     if not dry_run:
         for c in candidates:
-            try:
-                os.unlink(c["path"])
+            if _delete_file(c["path"]):
                 removed.append(c["path"])
-            except OSError:
-                pass
     return {
         "removed": removed if not dry_run else [],
         "would_remove": [c["path"] for c in candidates] if dry_run else [],

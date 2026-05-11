@@ -41,9 +41,18 @@ if n == 0:
     sys.exit(0)
 
 verb = "would remove" if dry_run else "removed"
-print(f"doctor: {verb} {n} stale sidecar(s):")
-for entry in result["stale"]:
-    handle = entry["handle"] or "(no handle)"
-    sid_short = entry["session_id"][:8]
-    print(f"  - {sid_short} · {handle} · {entry['path']}")
+shown = result["would_remove"] if dry_run else result["removed"]
+print(f"doctor: {verb} {len(shown)} stale sidecar(s):")
+by_path = {e["path"]: e for e in result["stale"]}
+for path in shown:
+    entry = by_path.get(path, {"session_id": "?", "handle": None})
+    handle = entry.get("handle") or "(no handle)"
+    sid_short = (entry.get("session_id") or "")[:8]
+    print(f"  - {sid_short} · {handle} · {path}")
+if not dry_run:
+    skipped = [c["path"] for c in result["stale"] if c["path"] not in result["removed"]]
+    if skipped:
+        print(f"doctor: {len(skipped)} candidate(s) could not be removed:")
+        for p in skipped:
+            print(f"  - {p}")
 PYEOF
