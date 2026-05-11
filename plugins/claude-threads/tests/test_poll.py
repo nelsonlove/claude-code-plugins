@@ -21,7 +21,7 @@ def test_poll_returns_match_when_thread_in_scope(tmp_home, threads_dir, write_si
     sid = "22222222-2222-2222-2222-222222222222"
     write_sidecar(sid, tags=["02.*"])
     th = create_thread(threads_dir=threads_dir, opener_handle="alice", scope=["02.14"],
-                       topic="t", first_message="m", author_handle="alice", author_model="x")
+                       topic="t", first_message="m", author_handle="alice")
     result = poll_for_session(home=tmp_home, session_id=sid,
                               threads_dir=str(threads_dir),
                               last_poll_epoch=0)
@@ -33,7 +33,7 @@ def test_poll_skips_threads_older_than_last_poll(tmp_home, threads_dir, write_si
     sid = "33333333-3333-3333-3333-333333333333"
     write_sidecar(sid, tags=["02.*"])
     create_thread(threads_dir=threads_dir, opener_handle="a", scope=["02.14"],
-                  topic="old", first_message="m", author_handle="a", author_model="x")
+                  topic="old", first_message="m", author_handle="a")
     time.sleep(0.05)
     cutoff = time.time()
     result = poll_for_session(home=tmp_home, session_id=sid,
@@ -47,7 +47,7 @@ def test_poll_uses_implicit_handle(tmp_home, threads_dir, write_sidecar, write_r
     write_sidecar(sid, tags=[])
     write_registry_entry(pid=400, session_id=sid, name="fern")
     create_thread(threads_dir=threads_dir, opener_handle="a", scope=["fern"],
-                  topic="direct", first_message="m", author_handle="a", author_model="x")
+                  topic="direct", first_message="m", author_handle="a")
     result = poll_for_session(home=tmp_home, session_id=sid,
                               threads_dir=str(threads_dir),
                               last_poll_epoch=0)
@@ -62,7 +62,7 @@ def test_poll_skips_self_authored_writes(tmp_home, threads_dir, write_sidecar, w
     write_registry_entry(pid=500, session_id=sid, name="myself")
     create_thread(threads_dir=threads_dir, opener_handle="myself", scope=["02.14"],
                   topic="self-write", first_message="m",
-                  author_handle="myself", author_model="x")
+                  author_handle="myself")
     result = poll_for_session(home=tmp_home, session_id=sid,
                               threads_dir=str(threads_dir),
                               last_poll_epoch=0)
@@ -79,9 +79,9 @@ def test_poll_surfaces_peer_reply_even_if_we_opened_thread(
     write_registry_entry(pid=600, session_id=sid, name="myself")
     th = create_thread(threads_dir=threads_dir, opener_handle="myself", scope=["02.14"],
                        topic="convo", first_message="m1",
-                       author_handle="myself", author_model="x")
+                       author_handle="myself")
     append_message(threads_dir=threads_dir, thread_id=th["thread_id"],
-                   author_handle="peer", author_model="x", message="reply from peer")
+                   author_handle="peer", message="reply from peer")
     result = poll_for_session(home=tmp_home, session_id=sid,
                               threads_dir=str(threads_dir),
                               last_poll_epoch=0)
@@ -98,7 +98,7 @@ def test_poll_seen_messages_dedupe_skips_unchanged_thread(
     write_sidecar(sid, tags=["02.*"])
     th = create_thread(threads_dir=threads_dir, opener_handle="peer", scope=["02.14"],
                        topic="t", first_message="m",
-                       author_handle="peer", author_model="x")
+                       author_handle="peer")
     seen = {}
     # First poll: new → surfaces, seen_messages gets stamped
     r1 = poll_for_session(home=tmp_home, session_id=sid,
@@ -123,13 +123,13 @@ def test_poll_seen_messages_resurfaces_on_real_message(
     write_sidecar(sid, tags=["02.*"])
     th = create_thread(threads_dir=threads_dir, opener_handle="peer", scope=["02.14"],
                        topic="t", first_message="m1",
-                       author_handle="peer", author_model="x")
+                       author_handle="peer")
     seen = {}
     poll_for_session(home=tmp_home, session_id=sid, threads_dir=str(threads_dir),
                      last_poll_epoch=0, seen_messages=seen)
     time.sleep(0.01)
     append_message(threads_dir=threads_dir, thread_id=th["thread_id"],
-                   author_handle="peer", author_model="x", message="new content")
+                   author_handle="peer", message="new content")
     r = poll_for_session(home=tmp_home, session_id=sid, threads_dir=str(threads_dir),
                         last_poll_epoch=0, seen_messages=seen)
     assert len(r["new_matches"]) == 1
@@ -150,7 +150,7 @@ def test_poll_seen_messages_silent_through_linter_storm(
     write_sidecar(sid, tags=["02.*"])
     th = create_thread(threads_dir=threads_dir, opener_handle="peer", scope=["02.14"],
                        topic="t", first_message="m",
-                       author_handle="peer", author_model="x")
+                       author_handle="peer")
     seen = {}
     # Initial surface
     r1 = poll_for_session(home=tmp_home, session_id=sid, threads_dir=str(threads_dir),
@@ -183,7 +183,7 @@ def test_poll_seen_messages_none_disables_dedupe(tmp_home, threads_dir, write_si
     write_sidecar(sid, tags=["02.*"])
     create_thread(threads_dir=threads_dir, opener_handle="peer", scope=["02.14"],
                   topic="t", first_message="m",
-                  author_handle="peer", author_model="x")
+                  author_handle="peer")
     r1 = poll_for_session(home=tmp_home, session_id=sid,
                           threads_dir=str(threads_dir), last_poll_epoch=0)
     assert len(r1["new_matches"]) == 1
@@ -205,14 +205,52 @@ def test_message_state_ignores_body_subheadings(tmp_home, threads_dir, write_sid
     write_sidecar(sid, tags=["02.*"])
     th = create_thread(threads_dir=threads_dir, opener_handle="alice", scope=["02.14"],
                        topic="t", first_message="initial",
-                       author_handle="alice", author_model="x")
+                       author_handle="alice")
     # Append a message whose BODY contains a `## Trust posture` line — this
     # must NOT be parsed as a header (would otherwise show last_author=Trust).
     append_message(threads_dir=threads_dir, thread_id=th["thread_id"],
-                   author_handle="bob", author_model="x",
+                   author_handle="bob",
                    message="Reply text.\n\n## Trust posture\n\nA convention note.")
     state = _message_state(th["path"])
     assert state is not None
     count, last_author, last_at = state
     assert count == 2  # alice's + bob's, NOT counting the body subheading
     assert last_author == "bob"  # not "Trust"
+
+
+def test_message_state_parses_legacy_3segment_header(tmp_home, threads_dir):
+    """Pre-0.2.3 wrote `## <author> · <ts> · <model>` (model="unknown" or
+    "claude-…"). The disambiguator must extract author=<first segment>
+    instead of treating the model token as the author."""
+    from lib.poll import _message_state
+    p = threads_dir / "legacy.md"
+    p.write_text(
+        "---\nthread-id: legacy01\n---\n\n"
+        "## alice · 2026-05-10T15:09:07 · unknown\n\nbody\n\n— alice\n\n"
+        "## bob · 2026-05-10T15:10:00 · claude-opus-4-7\n\nreply\n\n— bob\n"
+    )
+    state = _message_state(p)
+    assert state is not None
+    count, last_author, last_at = state
+    assert count == 2
+    assert last_author == "bob"  # not "claude-opus-4-7"
+    assert last_at == "2026-05-10T15:10:00"
+
+
+def test_message_state_handles_mixed_legacy_and_new(tmp_home, threads_dir):
+    """Threads written across the v0.2.2 → v0.2.3 boundary will have legacy
+    headers at the top and new headers below. _parse_headers must read both."""
+    from lib.poll import _message_state
+    p = threads_dir / "mixed.md"
+    p.write_text(
+        "---\nthread-id: mixed001\n---\n\n"
+        "## alice · 2026-05-10T15:09:07 · unknown\n\nold\n\n— alice\n\n"
+        "## status update · 2026-05-10T15:10:00 · bob\n\nnew\n\n— bob\n\n"
+        "## Trust posture\n\nbody subheading, NOT a message\n\n"
+        "## another reply · 2026-05-10T15:11:00 · alice\n\nlast\n\n— alice\n"
+    )
+    state = _message_state(p)
+    assert state is not None
+    count, last_author, last_at = state
+    assert count == 3  # 2 legacy parsed as 1 + 2 new = 3 real headers
+    assert last_author == "alice"

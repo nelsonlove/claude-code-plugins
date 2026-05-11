@@ -40,13 +40,40 @@ def _new_thread_id():
     return secrets.token_hex(4)  # 8 hex chars
 
 
-def _msg_header(author_handle, ts, author_model):
-    """Format the '## ' message header. Omits the model segment when unknown
-    (CC doesn't expose CLAUDE_MODEL to MCP server subprocesses, so a literal
-    'unknown' clutters every line; rather show fewer fields than wrong ones)."""
-    if author_model and author_model.lower() not in ("unknown", "external", ""):
-        return f"## {author_handle} · {ts} · {author_model}"
-    return f"## {author_handle} · {ts}"
+def _msg_header(author_handle, ts, subject):
+    """Format the '## ' message header (v0.2.3 layout):
+
+        ## <subject> · <ts> · <author>
+
+    Subject-first makes threads scannable in Obsidian's outline view. Author
+    moves to the END so the matcher's regex can anchor on it reliably (last
+    `· <token>` segment).
+
+    Model segment is dropped — CC doesn't expose CLAUDE_MODEL to MCP server
+    subprocesses, so v0.2.0–v0.2.2 always wrote 'unknown' there. For non-CC
+    posters via bin/post, model still travels in git history via commit
+    context, not the message header.
+    """
+    return f"## {subject} · {ts} · {author_handle}"
+
+
+def _derive_subject(message, fallback="(no subject)"):
+    """Return a single-line subject derived from the first non-empty line of
+    the message body, truncated to 60 chars. Used when the caller doesn't
+    pass an explicit subject. Falls back to '(no subject)' when the message
+    is empty or whitespace-only."""
+    for line in message.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # Strip Markdown heading hashes if the user wrote `# topic` as their first line
+        line = re.sub(r"^#+\s+", "", line)
+        if not line:
+            continue
+        # Squeeze internal whitespace so headers stay one line
+        line = re.sub(r"\s+", " ", line)
+        return line[:60]
+    return fallback
 
 
 def _msg_body(author_handle, message):
@@ -106,13 +133,16 @@ def _atomic_write(path: Path, text: str):
 
 
 def create_thread(*, threads_dir, opener_handle, scope, topic,
-                  first_message, author_handle, author_model, prefix="thread-",
-                  no_reply=False):
+                  first_message, author_handle, prefix="thread-",
+                  no_reply=False, subject=None):
     """Create a new thread file. Returns {thread_id, path}.
 
     If no_reply=True, sets `thread-no-reply: true` in frontmatter — append_message
     will refuse to add to it. Use for broadcast/announce threads where replies
     would mtime-storm every subscriber.
+
+    The first message gets `subject` if provided, otherwise the thread topic
+    (the topic IS the natural subject of the opener message).
     """
     thread_id = _new_thread_id()
     date = _today_iso_date()
@@ -132,9 +162,10 @@ def create_thread(*, threads_dir, opener_handle, scope, topic,
     if no_reply:
         fm[f"{prefix}no-reply"] = True
 
+    first_subject = subject if subject else topic
     body = (
         f"\n# {topic}\n\n"
-        f"{_msg_header(author_handle, ts, author_model)}\n\n"
+        f"{_msg_header(author_handle, ts, subject=first_subject)}\n\n"
         f"{_msg_body(author_handle, first_message)}"
     )
     _atomic_write(path, write_fm(fm, body))
@@ -165,8 +196,12 @@ class ThreadIsNoReply(Exception):
         )
 
 
-def append_message(*, threads_dir, thread_id, author_handle, author_model,
-                   message, prefix="thread-"):
+def append_message(*, threads_dir, thread_id, author_handle,
+                   message, prefix="thread-", subject=None):
+    """Append a message to a thread. If subject is None, derive from message.
+
+    The subject becomes the first segment of the `## ` header so the thread
+    reads as a scannable list of message topics in Obsidian's outline view."""
     path = _find_thread_path(threads_dir, thread_id, prefix=prefix)
     if path is None:
         raise KeyError(f"unknown thread-id: {thread_id}")
@@ -175,8 +210,9 @@ def append_message(*, threads_dir, thread_id, author_handle, author_model,
     if fm.get(f"{prefix}no-reply") is True:
         raise ThreadIsNoReply(thread_id)
     ts = _now_iso()
+    msg_subject = subject if subject else _derive_subject(message)
     new_block = (
-        f"\n{_msg_header(author_handle, ts, author_model)}\n\n"
+        f"\n{_msg_header(author_handle, ts, subject=msg_subject)}\n\n"
         f"{_msg_body(author_handle, message)}"
     )
     fm = update_keys(fm, {"modified": ts})
@@ -217,8 +253,23 @@ def list_threads(*, threads_dir, prefix="thread-"):
     return out
 
 
-_MSG_RE = re.compile(r"^## (?P<who>\S+) · (?P<when>\S+) · (?P<model>\S+)\n\n(?P<body>.*?)(?=\n## |\Z)",
-                     re.DOTALL | re.MULTILINE)
+# v0.2.3 message header: `## <subject> · <ISO-ts> · <author>`. Same shape and
+# disambiguation strategy as lib/poll.py — see _parse_headers there for the
+# full reasoning. Headers with a trailing model token are read as legacy
+# (author = first segment, no subject); otherwise treated as new (author =
+# last segment, subject = first).
+_ISO_TS = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\S*"
+_MSG_RE_NEW = re.compile(
+    rf"^## (?P<subject>.+?) · (?P<when>{_ISO_TS}) · (?P<who>\S+)\s*$\n\n?(?P<body>.*?)(?=\n## |\Z)",
+    re.DOTALL | re.MULTILINE,
+)
+_MSG_RE_LEGACY = re.compile(
+    rf"^## (?P<who>\S+) · (?P<when>{_ISO_TS})(?: · \S+)?\s*$\n\n?(?P<body>.*?)(?=\n## |\Z)",
+    re.DOTALL | re.MULTILINE,
+)
+_MODEL_TOKEN_RE = re.compile(
+    r"^(unknown|external|claude-|gpt-|llama-|mistral-|gemini-|anthropic-|openai-)"
+)
 
 
 def read_thread(*, threads_dir, thread_id, prefix="thread-"):
@@ -227,14 +278,24 @@ def read_thread(*, threads_dir, thread_id, prefix="thread-"):
         raise KeyError(f"unknown thread-id: {thread_id}")
     text = path.read_text()
     fm, body = parse(text)
-    messages = []
-    for m in _MSG_RE.finditer(body):
-        messages.append({
+    by_pos = {}  # line-start pos → message dict
+    for m in _MSG_RE_NEW.finditer(body):
+        if _MODEL_TOKEN_RE.match(m.group("who")):
+            continue  # legacy interpretation wins
+        by_pos[m.start()] = {
             "from": m.group("who"),
             "at": m.group("when"),
-            "model": m.group("model"),
+            "subject": m.group("subject"),
+            "body": m.group("body").strip(),
+        }
+    for m in _MSG_RE_LEGACY.finditer(body):
+        by_pos.setdefault(m.start(), {
+            "from": m.group("who"),
+            "at": m.group("when"),
+            "subject": None,
             "body": m.group("body").strip(),
         })
+    messages = [by_pos[k] for k in sorted(by_pos)]
     return {
         "thread_id": fm.get(f"{prefix}id"),
         "status": fm.get(f"{prefix}status"),

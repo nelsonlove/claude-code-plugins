@@ -16,16 +16,66 @@ from lib.match import match
 from lib.thread_store import list_threads
 
 
-# Match `## <author> · <ISO-timestamp>` (with optional trailing `· <model>`).
-# Strict on the timestamp shape: requires YYYY-MM-DDTHH:MM:SS (with optional
-# fractional seconds and offset). This prevents body-content sub-headings like
-# `## Trust posture` from being mis-parsed as a message-header line with author
-# "Trust" — bug observed live in v0.2.1 when peers used `## ` for sectioning
-# inside their reply bodies.
-_MESSAGE_HEADER_RE = re.compile(
-    r"^## (\S+) · (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\S*)(?: · \S+)?\s*$",
+# v0.2.3 message header: `## <subject> · <ISO-ts> · <author>` (3 segments,
+# author last). Pre-0.2.3 wrote `## <author> · <ts>` or `## <author> · <ts>
+# · <model>` (no subject, author first).
+#
+# Both shapes have the same strict ISO-timestamp anchor in the middle, which
+# blocks body-subheading false positives like `## Trust posture` (the
+# v0.2.1 bug fixed in v0.2.2). The shape difference: in the new format the
+# author is the LAST `· <token>` segment; in legacy with model it's the
+# token after `## `; in legacy without model it's also the token after `## `.
+#
+# Strategy: capture the timestamp + everything after the LAST ` · ` (could be
+# author OR model) AND the first token after `## ` (could be author OR
+# subject). Then dedupe with a heuristic: if both first and last tokens
+# differ, the new format treats last as author; if there's only one ·, the
+# token after `## ` is the author (legacy 2-segment).
+_ISO_TS = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\S*"
+# Match: `## <text> · <ts> · <token>` (new format, 3 segments)
+_HEADER_NEW = re.compile(
+    rf"^## (?P<subject>.+?) · (?P<when>{_ISO_TS}) · (?P<who>\S+)\s*$",
     re.MULTILINE,
 )
+# Match: `## <token> · <ts>` or `## <token> · <ts> · <token>` (legacy)
+_HEADER_LEGACY = re.compile(
+    rf"^## (?P<who>\S+) · (?P<when>{_ISO_TS})(?: · \S+)?\s*$",
+    re.MULTILINE,
+)
+# Matches the trailing `· <model>` segment in legacy 3-token headers.
+# Used to disambiguate from new format: if the last token looks like a known
+# model identifier, it's a legacy header where that's the model and the first
+# token is the author. v0.2.0–v0.2.2 wrote these literal values:
+#   "unknown"  (CC sessions, CLAUDE_MODEL not exposed to MCP subprocess)
+#   "external" (bin/post default when no CLAUDE_MODEL in env)
+#   "claude-…", "gpt-…", "llama-…", "mistral-…", "gemini-…" (rare; only if
+#   bin/post --model was used or future SDK exposes the var)
+_MODEL_TOKEN_RE = re.compile(
+    r"^(unknown|external|claude-|gpt-|llama-|mistral-|gemini-|anthropic-|openai-)"
+)
+
+
+def _parse_headers(text):
+    """Return ordered [(author, when), ...] for every message header in `text`.
+
+    Disambiguation between new (subject·ts·author) and legacy (author·ts·model)
+    shapes — both are 3-segment ISO-anchored — uses _MODEL_TOKEN_RE on the
+    trailing token: if it matches a known model identifier, the line is a
+    legacy header (author = first token); otherwise treat as new (author =
+    last token). Two-segment legacy headers only match _HEADER_LEGACY.
+
+    The strict ISO timestamp anchor in both patterns blocks body subheadings
+    like `## Trust posture` from being mis-parsed as headers (the v0.2.1 bug
+    fixed in v0.2.2).
+    """
+    found = {}  # line-start position → (author, when)
+    for m in _HEADER_NEW.finditer(text):
+        if _MODEL_TOKEN_RE.match(m.group("who")):
+            continue  # trailing token is a model name → legacy interpretation
+        found[m.start()] = (m.group("who"), m.group("when"))
+    for m in _HEADER_LEGACY.finditer(text):
+        found.setdefault(m.start(), (m.group("who"), m.group("when")))
+    return [found[k] for k in sorted(found)]
 
 
 def _message_state(path):
@@ -46,7 +96,7 @@ def _message_state(path):
         text = Path(path).read_text()
     except OSError:
         return None
-    headers = _MESSAGE_HEADER_RE.findall(text)
+    headers = _parse_headers(text)
     if not headers:
         return None
     return [len(headers), headers[-1][0], headers[-1][1]]

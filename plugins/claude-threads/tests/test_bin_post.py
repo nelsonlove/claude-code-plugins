@@ -84,7 +84,34 @@ def test_explicit_author_overrides_env(cli_env, tmp_home):
     assert r.returncode == 0
     text = next((tmp_home / ".claude" / "threads").glob("*cron*.md")).read_text()
     assert "thread-opener: external-cron" in text
-    assert "## external-cron" in text
+    # v0.2.3 header: `## <subject> · <ts> · <author>` — author moved to end.
+    # Subject defaults to topic for the opening message.
+    assert "· external-cron" in text
+
+
+def test_subject_flag_sets_message_header(cli_env, tmp_home):
+    """--subject overrides the default header subject for both modes."""
+    r = run_cli(cli_env, "--new", "--scope", "demo", "--topic", "convo",
+                "--subject", "kickoff", "let's talk")
+    assert r.returncode == 0
+    text = next((tmp_home / ".claude" / "threads").glob("*convo*.md")).read_text()
+    assert "## kickoff · " in text
+    # Reply with explicit subject
+    tid = r.stdout.strip()
+    r2 = run_cli(cli_env, "--thread", tid, "--subject", "follow-up", "more thoughts")
+    assert r2.returncode == 0
+    text = next((tmp_home / ".claude" / "threads").glob("*convo*.md")).read_text()
+    assert "## follow-up · " in text
+
+
+def test_reply_subject_defaults_to_first_line(cli_env, tmp_home):
+    """Without --subject, reply derives subject from message body's first line."""
+    r1 = run_cli(cli_env, "--new", "--scope", "demo", "--topic", "convo", "first")
+    tid = r1.stdout.strip()
+    r2 = run_cli(cli_env, "--thread", tid, "Quick status update\n\nbody continues here")
+    assert r2.returncode == 0
+    text = next((tmp_home / ".claude" / "threads").glob("*convo*.md")).read_text()
+    assert "## Quick status update · " in text
 
 
 def test_handle_resolution_falls_through_to_external(tmp_home):

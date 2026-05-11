@@ -63,15 +63,38 @@ INTERVAL="${WATCH_INTERVAL:-}"
 declare -A LAST_STATE
 
 # extract_message_state FILE → echoes "<count>:<last_author>:<last_at>" or empty
-# Matches the same strict pattern as lib/poll._MESSAGE_HEADER_RE — requires an
-# ISO timestamp segment after the author so body subheadings like
-# `## Trust posture` are NOT counted as message headers.
+# Matches the same strict pattern as lib/poll._parse_headers — requires an
+# ISO timestamp anchor in the line, blocking body subheadings like
+# `## Trust posture` from being counted as message headers.
+#
+# v0.2.3 header shape: `## <subject> · <ISO-ts> · <author>` (3 segments,
+# author is the LAST · segment). v0.2.0–v0.2.2 legacy: `## <author> · <ts>`
+# or `## <author> · <ts> · <model>`. Disambiguate by checking the last
+# token: if it matches a known model prefix (unknown/external/claude-/gpt-/
+# llama-/mistral-/gemini-), treat as legacy and use field 2 as author;
+# else treat as new and use the LAST · segment as author. Timestamp comes
+# right after `## .* · ` and matches the ISO pattern.
 extract_message_state() {
-  awk '
-    /^## [^ ]+ · [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]/ {
+  awk -F' · ' '
+    /^## .+ · [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]/ {
       count++
-      author = $2
-      at = $4
+      # NF = number of · segments
+      first = $1; sub(/^## /, "", first)
+      last = $NF
+      sub(/[[:space:]]+$/, "", last)
+      if (NF >= 3 && last ~ /^(unknown|external|claude-|gpt-|llama-|mistral-|gemini-|anthropic-|openai-)/) {
+        # Legacy 3-segment: author=first, model=last
+        author = first
+      } else if (NF >= 3) {
+        # New format: subject=first, author=last
+        author = last
+      } else {
+        # Legacy 2-segment: ## author · ts
+        author = first
+      }
+      # Timestamp is always the segment right after subject/author and before any trailing ·
+      at = (NF >= 3) ? $2 : $2
+      sub(/[[:space:]]+$/, "", at)
     }
     END {
       if (count > 0) printf "%d:%s:%s", count, author, at
