@@ -136,26 +136,30 @@ def get_handle(home, session_id):
     return data.get("handle")
 
 
-def get_live_note_seen_modified(home, session_id):
-    """Return the last-known `modified:` value of the agent's live note, or None."""
+def get_live_note_seen_body_hash(home, session_id):
+    """Return the last-known body sha256 of the agent's live note, or None.
+
+    Watermark stored after each write_live_note call so the watcher can detect
+    user-edits without false positives from Obsidian Linter rewriting
+    frontmatter timestamps.
+    """
     data = read_sidecar(home, session_id)
     if not data:
         return None
-    return data.get("live_note_seen_modified")
+    return data.get("live_note_seen_body_hash")
 
 
-def set_live_note_seen_modified(home, session_id, value):
-    """Update the watermark `modified:` value the agent recorded after its last
-    live-note write. Used by lib.live_watcher to detect user-edits (modified
-    changed since the agent's last write). Idempotent. Returns True if changed."""
+def set_live_note_seen_body_hash(home, session_id, value):
+    """Update the body-hash watermark. Idempotent. Returns True if changed."""
     path = SidecarPath(home, session_id).path
     data = _read_or_empty(path)
     if data is None:
+        ts = _now_iso()
         data = {"schema": SCHEMA_VERSION, "session_id": session_id, "tags": [],
-                "added": _now_iso()}
-    if data.get("live_note_seen_modified") == value:
+                "added": ts, "modified": ts}
+    if data.get("live_note_seen_body_hash") == value:
         return False
-    data["live_note_seen_modified"] = value
+    data["live_note_seen_body_hash"] = value
     data["modified"] = _now_iso()
     _atomic_write(path, data)
     return True

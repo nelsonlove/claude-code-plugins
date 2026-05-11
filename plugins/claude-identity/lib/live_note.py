@@ -11,6 +11,7 @@ Vault path resolution order:
     1. OBSIDIAN_VAULT env var
     2. Hardcoded default: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian
 """
+import hashlib
 import os
 import re
 import tempfile
@@ -146,6 +147,19 @@ def read_modified_field(text):
     return field.group(1).strip() if field else None
 
 
+def body_hash(text):
+    """SHA-256 hash of the note body (everything AFTER the closing `---`).
+
+    Used by the live-note watcher as a watermark: stable across Obsidian Linter
+    touches that only modify frontmatter timestamps, sensitive only to real
+    edits within the message sections. Returns hex digest, or None if the file
+    has no frontmatter (in which case we hash the whole text).
+    """
+    m = _FRONTMATTER_RE.match(text)
+    body = text[m.end():] if m else text
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
 def update_frontmatter_fields(text, fields):
     """Update specific fields in YAML frontmatter. Adds the field if absent.
     Replaces only top-level `key: value` lines; ignores nested structure.
@@ -237,13 +251,15 @@ def write_live_note(
             "cadence": f'"{cadence}"',
         })
     _atomic_write(note_path, text)
-    # Record the post-write `modified:` value so the watcher can detect
-    # user-edits (any subsequent change to modified is by definition not us).
+    # Record the post-write body hash so the watcher can detect user-edits.
+    # We hash the body (not frontmatter) because Obsidian Linter may rewrite
+    # the `modified:` timestamp format independent of any real edit; the body
+    # is stable across Linter passes, sensitive only to message-section edits.
     final_text = note_path.read_text(encoding="utf-8")
-    seen = read_modified_field(final_text)
+    seen = body_hash(final_text)
     if seen and session_id:
         try:
-            sidecar.set_live_note_seen_modified(home, session_id, seen)
+            sidecar.set_live_note_seen_body_hash(home, session_id, seen)
         except Exception:
             pass  # state-tracking is best-effort; don't fail the write
     return {"ok": True, "path": str(note_path), "created": created}

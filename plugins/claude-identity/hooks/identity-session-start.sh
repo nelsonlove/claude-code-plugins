@@ -64,10 +64,37 @@ if os.path.isfile(project_config):
 # so reconnects to the same UUID get the same name. Fall through silently if
 # the wordlist module isn't importable for some reason — sidecar still gets
 # created, just without an auto-handle.
+#
+# Collision check: hash collisions in the wordlist would otherwise produce two
+# live sessions with the same handle (and overwriting live notes). Scan other
+# live sidecars before claiming the word; if another session already has it,
+# fall through to UUID-prefix default. Cheap O(n_sessions) check at boot.
 handle = None
 try:
     from lib.wordlist import pick_handle
-    handle = pick_handle(session_id)
+    candidate = pick_handle(session_id)
+    if candidate:
+        meta_dir = os.path.dirname(meta_file)
+        taken = False
+        try:
+            for f in os.listdir(meta_dir):
+                if not f.endswith(".json"):
+                    continue
+                p = os.path.join(meta_dir, f)
+                # Skip our own (we haven't written it yet, but be defensive)
+                if os.path.realpath(p) == os.path.realpath(meta_file):
+                    continue
+                try:
+                    other = json.load(open(p))
+                except Exception:
+                    continue
+                if other.get("handle") == candidate:
+                    taken = True
+                    break
+        except FileNotFoundError:
+            pass  # meta_dir doesn't exist yet — first session, no collisions
+        if not taken:
+            handle = candidate
 except Exception:
     pass
 

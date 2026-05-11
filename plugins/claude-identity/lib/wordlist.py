@@ -2,18 +2,13 @@
 
 Per Nelson's call (2026-05-11): single words only, no Docker-style two-word
 combos. Pool size is small relative to total agent population, so we accept
-the birthday-paradox collision rate — when two sessions hash to the same
-word, the second hits HandleCollision at registry.set_handle time and falls
-through to the UUID-prefix default. No harm, just no auto-friendly name.
+the birthday-paradox collision rate. When two sessions hash to the same word,
+the SessionStart hook detects the collision (scanning other sidecars) and
+falls through to the UUID-prefix default rather than silently double-assigning.
 
-Curated mix:
-  - Nature: birds, plants, minerals, weather, terrain
-  - CS pioneers
-  - Food
-  - Mythological / poetic
-
-Selection is deterministic by session_id (full UUID hashed mod pool size),
-so a session that disconnects and reconnects with the same UUID gets the
+Curated mix: birds, plants, minerals, weather, crafts, CS pioneers, food,
+mythological, animals. Selection is deterministic by session_id (full UUID
+hashed mod pool size), so a session reconnecting with the same UUID gets the
 same name back.
 """
 import hashlib
@@ -30,7 +25,7 @@ WORDLIST = (
     # Minerals & terrain
     "cairn", "quartz", "slate", "flint", "shale", "tide", "ember",
     "coral", "amber", "obsidian", "agate", "geode", "ridge", "delta",
-    "fjord", "mesa", "tundra", "vega",
+    "fjord", "mesa", "tundra",
     # Weather & light
     "frost", "mist", "haze", "drift", "dapple", "dusk", "dawn", "shadow",
     "glimmer", "gloam", "rime", "halo",
@@ -40,23 +35,25 @@ WORDLIST = (
     # CS pioneers / scientists
     "ada", "babbage", "lovelace", "hopper", "turing", "knuth", "ritchie",
     "kernighan", "shannon", "vonneumann", "djikstra", "wirth", "stallman",
-    "ritchie", "thompson", "kay",
+    "thompson", "kay",
     # Food
     "bento", "mochi", "miso", "ramen", "sushi", "tempura", "wasabi",
     "umami", "sourdough", "barley", "fennel", "pepper", "thyme",
     "rosemary", "basil",
     # Mythological / poetic
-    "ada", "atlas", "calypso", "echo", "iris", "lyra", "nyx", "phoenix",
+    "atlas", "calypso", "echo", "iris", "lyra", "nyx", "phoenix",
     "selene", "vega", "andromeda", "perseus", "orion",
     # Animals
     "otter", "fox", "lynx", "badger", "hare", "stoat", "marten", "ermine",
     "vole", "skunk", "ferret", "weasel",
     # Misc nature-adjacent
-    "aslan", "goober", "davinci", "charles", "frost", "clover",
+    "aslan", "goober", "davinci", "charles",
 )
 
-# De-duplicate while preserving order (cheap with dict in py3.7+)
-WORDLIST = tuple(dict.fromkeys(WORDLIST))
+# Sanity check: no duplicates expected; if any sneak in via editing, fail loud
+# at import time rather than silently shrinking the pool.
+assert len(WORDLIST) == len(set(WORDLIST)), \
+    f"wordlist has {len(WORDLIST) - len(set(WORDLIST))} duplicate(s)"
 
 
 def pick_handle(session_id):
