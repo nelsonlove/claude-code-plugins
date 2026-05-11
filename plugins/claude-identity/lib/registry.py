@@ -155,7 +155,9 @@ def resolve_handle_or_uuid_to_session_id(home, identifier):
 
 
 # ---------------------------------------------------------------------------
-# v0.1.2: handle write path (set_handle / /claude-identity:rename)
+# v0.1.3: handle write path (set_handle / /claude-identity:rename).
+# v0.1.2 wrote CC's registry `name` field; v0.1.3 writes the sidecar `handle`
+# field instead — see module docstring for the resolution-chain rationale.
 # ---------------------------------------------------------------------------
 
 # Reserved tokens that would conflict with tag-matching semantics or look

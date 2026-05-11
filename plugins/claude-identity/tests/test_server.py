@@ -95,6 +95,52 @@ def test_match_no_match(mcp_client, tmp_home, sample_registry_entry):
     assert body["matches"] is False
 
 
+def test_tools_list_includes_v013_tools(mcp_client):
+    """v0.1.3 added set_handle and update_live_note."""
+    resp = mcp_client.call("tools/list")
+    names = [t["name"] for t in resp["result"]["tools"]]
+    assert "set_handle" in names
+    assert "update_live_note" in names
+
+
+def test_update_live_note_fails_fast_on_uuid_default(mcp_client, tmp_home, sample_registry_entry):
+    """Session whose handle is still the UUID-prefix default must be rejected
+    with a clear error pointing at /claude-identity:rename."""
+    # Registry entry with NO `name` set → handle resolves to UUID prefix
+    sid = "aaaabbbb-aaaa-aaaa-aaaa-aaaaaaaaaaaa"  # first 8 chars match UUID-prefix regex
+    sample_registry_entry(pid=os.getpid(), session_id=sid)
+    resp = mcp_client.call("tools/call", {
+        "name": "update_live_note",
+        "arguments": {"body": "test"},
+    })
+    # Should surface an error rather than writing a note. Check both shapes
+    # (top-level error or content carrying error text).
+    err_str = json.dumps(resp)
+    assert "rename" in err_str.lower() or "handle" in err_str.lower()
+
+
+def test_update_live_note_succeeds_with_named_handle(mcp_client, tmp_home, sample_registry_entry, monkeypatch, tmp_path):
+    """With a non-UUID handle, the tool should call live_note.write_live_note
+    and return path/created info."""
+    sid = "cccc7777-cccc-cccc-cccc-cccccccccccc"
+    sample_registry_entry(pid=os.getpid(), session_id=sid, name="cairn")
+    monkeypatch.setenv("OBSIDIAN_VAULT", str(tmp_path))
+    # Restart client with the env override applied
+    client2 = MCPClient({**os.environ, "HOME": str(tmp_home), "OBSIDIAN_VAULT": str(tmp_path)})
+    try:
+        client2.call("initialize")
+        resp = client2.call("tools/call", {
+            "name": "update_live_note",
+            "arguments": {"section": "Current task", "body": "smoke test"},
+        })
+        body = json.loads(resp["result"]["content"][0]["text"])
+        assert body["ok"] is True
+        assert body["created"] is True
+        assert "cairn.md" in body["path"]
+    finally:
+        client2.close()
+
+
 def test_unknown_session_returns_error(mcp_client):
     resp = mcp_client.call("tools/call", {
         "name": "list_tags", "arguments": {"session_id": "nonexistent"}

@@ -21,17 +21,12 @@ from pathlib import Path
 from lib import sidecar
 
 
-DEFAULT_VAULT = (
-    Path.home()
-    / "Library"
-    / "Mobile Documents"
-    / "iCloud~md~obsidian"
-    / "Documents"
-    / "Obsidian"
-)
-
 LIVE_NOTES_SUBPATH = Path("00-09 System") / "03 LLMs & agents" / "03.15 Agent live notes"
 
+# Built-in fallback template, used only when the configured template file
+# (default: 03.03 Templates for category 03/Agent live note for {{handle}}.md
+# in the vault) is missing. The vault file is the canonical source — edit
+# there to customize the shape; this string is just the rescue.
 DEFAULT_TEMPLATE = """---
 title: Agent live note for {{handle}}
 jd-id: "03.15"
@@ -74,12 +69,49 @@ linter-yaml-title-alias: Agent live note for {{handle}}
 """
 
 
-def resolve_vault_path():
-    """Return Path to the Obsidian vault. Env override, else hardcoded default."""
+def resolve_vault_path(home=None, project_root=None):
+    """Return Path to the Obsidian vault. Order:
+      1. OBSIDIAN_VAULT env var
+      2. global config (`~/.claude/claude-identity/config.toml` `[paths] vault = "..."`)
+      3. project-local config
+      4. baked default in lib.config (iCloud Obsidian)
+    """
     env = os.environ.get("OBSIDIAN_VAULT")
     if env:
         return Path(env).expanduser()
-    return DEFAULT_VAULT
+    if home is None:
+        home = os.path.expanduser("~")
+    if project_root is None:
+        project_root = os.getcwd()
+    from lib import config
+    cfg = config.load_config(home, project_root)
+    return Path(cfg["vault"]).expanduser()
+
+
+def resolve_template_path(home=None, project_root=None):
+    """Return Path to the live-note template file (in-vault). Resolved via
+    config — caller passes home/project_root if known, else they default to
+    the current process's $HOME and cwd."""
+    if home is None:
+        home = os.path.expanduser("~")
+    if project_root is None:
+        project_root = os.getcwd()
+    from lib import config
+    cfg = config.load_config(home, project_root)
+    vault = Path(cfg["vault"]).expanduser()
+    return vault / cfg["live_note_template"]
+
+
+def load_template(home=None, project_root=None):
+    """Read the live-note template from the configured file. Falls back to
+    the baked DEFAULT_TEMPLATE string if the file is missing or unreadable."""
+    try:
+        path = resolve_template_path(home, project_root)
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+    except OSError:
+        pass
+    return DEFAULT_TEMPLATE
 
 
 def resolve_note_path(vault, handle):
@@ -199,7 +231,7 @@ def write_live_note(
     """Create or update a live note for the given handle.
 
     Args:
-      home: $HOME path (currently unused; reserved for future config lookups)
+      home: $HOME path (used for sidecar state + config lookups)
       session_id: full UUID
       handle: agent handle (e.g. "quill"); rejected by caller if UUID-default
       scope: list of subscriber tags (from claude-identity:list_tags); may be []
@@ -208,14 +240,43 @@ def write_live_note(
                body is written into the "Live notes" section
       body: content to write
       vault: override vault path (defaults to resolve_vault_path())
-      template_text: override template (defaults to DEFAULT_TEMPLATE)
+      template_text: override template (defaults to load_template() — reads
+               the configured in-vault template file, falls back to baked
+               DEFAULT_TEMPLATE if missing)
 
-    Returns: dict {ok: True, path: <str>, created: <bool>}
+    Handle-rename mid-session: if the agent renamed since its last
+    write_live_note call (sidecar's `live_note_last_handle` differs from
+    current `handle`), the old `<old-handle>.md` file is renamed to
+    `<new-handle>.md` before the update. Track-the-current-session semantics
+    per issue #24.
+
+    Returns: dict {ok: True, path: <str>, created: <bool>, renamed_from: <str-or-None>}
     """
-    vault = Path(vault) if vault else resolve_vault_path()
-    template = template_text or DEFAULT_TEMPLATE
+    vault = Path(vault) if vault else resolve_vault_path(home=home)
+    template = template_text if template_text is not None else load_template(home=home)
     target_section = section or "Live notes"
     note_path = resolve_note_path(vault, handle)
+
+    # Handle-rename follow: if the agent renamed since its last write, move
+    # the old file to the new path.
+    renamed_from = None
+    if session_id:
+        try:
+            last_handle = sidecar.read_sidecar(home, session_id) or {}
+            last_handle = last_handle.get("live_note_last_handle")
+        except Exception:
+            last_handle = None
+        if last_handle and last_handle != handle:
+            old_path = resolve_note_path(vault, last_handle)
+            if old_path.exists() and not note_path.exists():
+                note_path.parent.mkdir(parents=True, exist_ok=True)
+                old_path.rename(note_path)
+                renamed_from = last_handle
+                # Update the handle field in frontmatter to reflect the rename.
+                if note_path.exists():
+                    text = note_path.read_text(encoding="utf-8")
+                    text = update_frontmatter_fields(text, {"handle": handle})
+                    _atomic_write(note_path, text)
     date, time = _now_parts()
     timestamp = f"{date}T{time}"
     scope_csv = ", ".join(scope) if scope else ""
@@ -260,6 +321,10 @@ def write_live_note(
     if seen and session_id:
         try:
             sidecar.set_live_note_seen_body_hash(home, session_id, seen)
+            sidecar.set_live_note_last_handle(home, session_id, handle)
         except Exception:
             pass  # state-tracking is best-effort; don't fail the write
-    return {"ok": True, "path": str(note_path), "created": created}
+    return {
+        "ok": True, "path": str(note_path), "created": created,
+        "renamed_from": renamed_from,
+    }

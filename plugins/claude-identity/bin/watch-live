@@ -13,9 +13,14 @@
 #   WATCH_INTERVAL : polling interval in seconds (default 3)
 #
 # Self-write detection: lib.live_note.write_live_note records the post-write
-# `modified:` value in the sidecar's `live_note_seen_modified` field. The
-# watcher reads that watermark on every poll and compares against the file's
-# current `modified:`. Divergence → user edit.
+# body sha256 in the sidecar's `live_note_seen_body_hash` field. The watcher
+# computes the current body hash on every poll and compares against that
+# watermark. Divergence → user edit.
+#
+# Body-hash (rather than `modified:` timestamp) is the watermark because
+# Obsidian Linter rewrites frontmatter modified format independently of any
+# real edit — body is stable across Linter passes, sensitive only to message-
+# section edits.
 
 set -u
 

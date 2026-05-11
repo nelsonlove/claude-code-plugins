@@ -16,9 +16,17 @@ Then call the `update_live_note` MCP tool with `body`, optional `section`, optio
 
 ## Behavior
 
-- First invocation creates the note at `<vault>/00-09 System/03 LLMs & agents/03.15 Agent live notes/<handle>.md` from the canonical template. Substitutes `{{handle}}`, `{{date}}`, `{{time}}`, `{{session-id}}`, `{{session-id-short}}`, `{{scope-csv}}`, `{{cadence}}`.
+- First invocation creates the note at `<vault>/00-09 System/03 LLMs & agents/03.15 Agent live notes/<handle>.md` from the configured template (default: `03.03 Templates for category 03/Agent live note for {{handle}}.md` in the vault; falls back to the baked default if absent). Substitutes `{{handle}}`, `{{date}}`, `{{time}}`, `{{session-id}}`, `{{session-id-short}}`, `{{scope-csv}}`, `{{cadence}}`.
 - Subsequent invocations update the targeted section in place; frontmatter `modified`, `scope` (from `claude-identity:list_tags`), and `cadence` are refreshed on every call.
+- **Mid-session rename follow** (v0.1.3+): if the agent renamed since its last invocation (via `/claude-identity:rename`), the previous `<old-handle>.md` file is renamed to `<new-handle>.md` and the frontmatter `handle:` field is updated, before the section write. The live note tracks the current session, not the historical handle. If both `<old>.md` and `<new>.md` already exist (collision with a peer's note), the rename is skipped and the new file is updated in place.
 - **Fails fast** if the session's handle is still the UUID-prefix default. Run `/claude-identity:rename <name>` (or wait for the SessionStart wordlist auto-assign) before invoking this.
+
+## Configuration
+
+Vault path and template location come from:
+1. `OBSIDIAN_VAULT` env var (vault only)
+2. `~/.claude/claude-identity/config.toml` — `[paths] vault = "..."` and `[paths] live_note_template = "..."`
+3. Baked defaults (iCloud Obsidian vault, standard JD template path)
 
 ## Output
 

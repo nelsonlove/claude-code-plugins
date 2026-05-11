@@ -25,10 +25,12 @@ Steps:
 
 ## How it works
 
-The script polls the agent's live note (`<vault>/03 LLMs & agents/03.15 Agent live notes/<handle>.md`) every `interval` seconds and compares the file's `modified:` frontmatter field against the watermark the agent stored in its sidecar after its last `update_live_note` call.
+The script polls the agent's live note (`<vault>/03 LLMs & agents/03.15 Agent live notes/<handle>.md`) every `interval` seconds and computes a sha256 hash of the note body (everything after the closing `---` of frontmatter). It compares the current body hash against the watermark the agent stored in its sidecar after its last `update_live_note` call.
 
 - **No change** → silent.
-- **`modified:` diverges from watermark** → emits one line to stdout, which Claude Code surfaces as a `<task-notification>` in the chat. Watcher then accepts the change as the new watermark so it doesn't keep firing for the same edit.
+- **Body hash diverges from watermark** → emits one line to stdout, which Claude Code surfaces as a `<task-notification>` in the chat. Watcher then accepts the change as the new watermark so it doesn't keep firing for the same edit.
+
+**Why body hash (not `modified:`)**: Obsidian Linter rewrites the frontmatter `modified:` timestamp format independent of any real edit. The body is stable across Linter passes and sensitive only to message-section edits — true user-edit signal without the Linter-storm noise.
 
 Self-writes are not emitted: every `update_live_note` call updates the watermark after writing, so the agent's own modifications are always "in sync" with the file.
 

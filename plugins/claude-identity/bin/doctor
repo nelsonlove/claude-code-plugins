@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# bin/doctor — identify and prune stale claude-identity state.
+#
+# Usage: doctor [--dry-run]
+#
+# Currently handles: stale sessions-meta sidecars (sessions that have ended
+# but whose JSON files weren't reaped). These otherwise block SessionStart's
+# handle-collision check, preventing live sessions from claiming their
+# deterministic wordlist pick.
+
+set -u
+
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+export PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+
+DRY_RUN=0
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    -h|--help)
+      echo "usage: doctor [--dry-run]"
+      echo ""
+      echo "Prune stale sessions-meta sidecars (sessions whose pid is no longer alive)."
+      echo "  --dry-run   list what would be removed without touching anything"
+      exit 0
+      ;;
+  esac
+done
+
+python3 - "$DRY_RUN" <<'PYEOF'
+import json, os, sys
+home = os.path.expanduser("~")
+dry_run = bool(int(sys.argv[1]))
+
+from lib.doctor import prune_stale_sidecars
+
+result = prune_stale_sidecars(home, dry_run=dry_run)
+n = len(result["stale"])
+if n == 0:
+    print("doctor: no stale sidecars")
+    sys.exit(0)
+
+verb = "would remove" if dry_run else "removed"
+print(f"doctor: {verb} {n} stale sidecar(s):")
+for entry in result["stale"]:
+    handle = entry["handle"] or "(no handle)"
+    sid_short = entry["session_id"][:8]
+    print(f"  - {sid_short} · {handle} · {entry['path']}")
+PYEOF
