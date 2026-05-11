@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# bin/watch-live — monitor this session's live note for user-edits.
+#
+# Long-running process. Each user edit (detected via the live note's
+# frontmatter `modified:` field diverging from the agent's last-recorded
+# watermark) is emitted as one stdout line.
+#
+# Used by /claude-identity:watch-live-note (arms via Monitor) and by
+# downstream consumers that want to know when Nelson edits an agent's note.
+#
+# Env vars:
+#   MY_SESSION_ID  : session UUID (required for watermark lookup in sidecar)
+#   WATCH_INTERVAL : polling interval in seconds (default 3)
+#
+# Self-write detection: lib.live_note.write_live_note records the post-write
+# `modified:` value in the sidecar's `live_note_seen_modified` field. The
+# watcher reads that watermark on every poll and compares against the file's
+# current `modified:`. Divergence → user edit.
+
+set -u
+
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+export PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+
+INTERVAL="${WATCH_INTERVAL:-3}"
+SID="${MY_SESSION_ID:-}"
+
+if [ -z "$SID" ]; then
+  echo "watch-live: MY_SESSION_ID env var required" >&2
+  exit 1
+fi
+
+python3 - "$SID" "$INTERVAL" <<'PYEOF'
+import os, sys, time
+from pathlib import Path
+
+session_id = sys.argv[1]
+interval = float(sys.argv[2])
+home = os.path.expanduser("~")
+
+from lib import registry, live_watcher
+
+# Resolve handle from the session_id so we know which file to watch.
+handle = registry.resolve_handle(home, session_id)
+if not handle:
+    print(f"watch-live: no handle for session {session_id[:8]}", flush=True)
+    sys.exit(1)
+
+print(f"watch-live armed: session {session_id[:8]}, handle {handle}", flush=True)
+
+while True:
+    try:
+        result = live_watcher.detect_user_edit(home, session_id, handle)
+        if result["changed"]:
+            print(
+                f"user-edit: live note for {handle} modified externally "
+                f"(was {result['previous']}, now {result['current']})",
+                flush=True,
+            )
+            # Accept the change so we don't keep firing on the same edit.
+            live_watcher.accept_change(home, session_id, result["current"])
+    except Exception as e:
+        print(f"watch-live: scan failed: {e}", flush=True)
+    time.sleep(interval)
+PYEOF

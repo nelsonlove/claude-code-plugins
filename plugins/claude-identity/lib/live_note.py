@@ -17,6 +17,8 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from lib import sidecar
+
 
 DEFAULT_VAULT = (
     Path.home()
@@ -132,6 +134,16 @@ def replace_section(text, section_name, new_body):
 
 
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
+_MODIFIED_RE = re.compile(r"^modified:\s*(.+?)\s*$", re.MULTILINE)
+
+
+def read_modified_field(text):
+    """Extract the `modified:` value from frontmatter. Returns None if absent."""
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        return None
+    field = _MODIFIED_RE.search(m.group(1))
+    return field.group(1).strip() if field else None
 
 
 def update_frontmatter_fields(text, fields):
@@ -186,7 +198,6 @@ def write_live_note(
 
     Returns: dict {ok: True, path: <str>, created: <bool>}
     """
-    del home  # reserved
     vault = Path(vault) if vault else resolve_vault_path()
     template = template_text or DEFAULT_TEMPLATE
     target_section = section or "Live notes"
@@ -206,27 +217,33 @@ def write_live_note(
         "cadence": cadence,
     }
 
-    if not note_path.exists():
+    created = not note_path.exists()
+    if created:
         text = render_template(template, vars_)
-        # First write: also drop the supplied body into the target section.
         try:
             text = replace_section(text, target_section, body)
         except KeyError:
-            # Section name not in template — append a new section at the end.
             text = text.rstrip() + f"\n\n## {target_section}\n\n{body.strip()}\n"
-        _atomic_write(note_path, text)
-        return {"ok": True, "path": str(note_path), "created": True}
-
-    text = note_path.read_text(encoding="utf-8")
-    try:
-        text = replace_section(text, target_section, body)
-    except KeyError:
-        text = text.rstrip() + f"\n\n## {target_section}\n\n{body.strip()}\n"
-    # Refresh modified/scope/cadence in frontmatter.
-    text = update_frontmatter_fields(text, {
-        "modified": timestamp,
-        "scope": f"[{scope_csv}]",
-        "cadence": f'"{cadence}"',
-    })
+    else:
+        text = note_path.read_text(encoding="utf-8")
+        try:
+            text = replace_section(text, target_section, body)
+        except KeyError:
+            text = text.rstrip() + f"\n\n## {target_section}\n\n{body.strip()}\n"
+        # Refresh modified/scope/cadence in frontmatter on subsequent writes.
+        text = update_frontmatter_fields(text, {
+            "modified": timestamp,
+            "scope": f"[{scope_csv}]",
+            "cadence": f'"{cadence}"',
+        })
     _atomic_write(note_path, text)
-    return {"ok": True, "path": str(note_path), "created": False}
+    # Record the post-write `modified:` value so the watcher can detect
+    # user-edits (any subsequent change to modified is by definition not us).
+    final_text = note_path.read_text(encoding="utf-8")
+    seen = read_modified_field(final_text)
+    if seen and session_id:
+        try:
+            sidecar.set_live_note_seen_modified(home, session_id, seen)
+        except Exception:
+            pass  # state-tracking is best-effort; don't fail the write
+    return {"ok": True, "path": str(note_path), "created": created}
