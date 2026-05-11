@@ -68,17 +68,22 @@ def test_resolve_ambiguous_raises(tmp_home, sample_registry_entry, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# v0.1.2: set_handle (writes CC's `name` field via atomic-write)
+# v0.1.3: set_handle (writes sidecar `handle` field; decoupled from CC's name)
 # ---------------------------------------------------------------------------
 
-def test_set_handle_writes_name_field(tmp_home, sample_registry_entry):
+def test_set_handle_writes_sidecar_handle(tmp_home, sample_registry_entry):
+    """v0.1.3: handle lives in the sessions-meta sidecar, not the CC registry."""
     from lib.registry import set_handle
-    sample_registry_entry(pid=500, session_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    from lib.sidecar import get_handle
+    sid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    sample_registry_entry(pid=500, session_id=sid)
     result = set_handle(tmp_home, my_pid=500, handle="cairn")
     assert result == {"ok": True, "handle": "cairn", "previous": None}
+    assert get_handle(tmp_home, sid) == "cairn"
+    # CC's registry `name` field is NOT touched by set_handle:
     import json
     entry = json.loads((tmp_home / ".claude" / "sessions" / "500.json").read_text())
-    assert entry["name"] == "cairn"
+    assert "name" not in entry or entry.get("name") is None
 
 
 def test_set_handle_returns_previous_when_overwriting(tmp_home, sample_registry_entry):
