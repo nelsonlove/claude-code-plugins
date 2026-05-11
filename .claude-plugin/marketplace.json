@@ -164,8 +164,8 @@
     {
       "name": "claude-goodbye",
       "source": "./plugins/claude-goodbye",
-      "description": "Agent self-termination via /goodbye slash command (SIGTERM to own PID). Depends on claude-identity.",
-      "version": "0.1.0",
+      "description": "Agent self-termination with configurable /teardown sequence + /goodbye (SIGTERM to own PID). Depends on claude-identity.",
+      "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
       }
