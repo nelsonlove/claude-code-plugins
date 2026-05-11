@@ -34,8 +34,7 @@ WORDLIST = (
     "satchel", "lantern", "compass", "sextant", "harp",
     # CS pioneers / scientists
     "ada", "babbage", "lovelace", "hopper", "turing", "knuth", "ritchie",
-    "kernighan", "shannon", "vonneumann", "djikstra", "wirth", "stallman",
-    "thompson", "kay",
+    "kernighan", "shannon", "wirth", "stallman", "thompson", "kay",
     # Food
     "bento", "mochi", "miso", "ramen", "sushi", "tempura", "wasabi",
     "umami", "sourdough", "barley", "fennel", "pepper", "thyme",
@@ -47,7 +46,7 @@ WORDLIST = (
     "otter", "fox", "lynx", "badger", "hare", "stoat", "marten", "ermine",
     "vole", "skunk", "ferret", "weasel",
     # Misc nature-adjacent
-    "aslan", "goober", "davinci", "charles",
+    "goober",
 )
 
 # Sanity check: no duplicates expected; if any sneak in via editing, fail loud
