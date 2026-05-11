@@ -97,12 +97,13 @@ def main():
                       help="shortcut: start new thread scoped to that handle")
     p.add_argument("--scope", metavar="CSV", help="comma-separated scope tags (with --new)")
     p.add_argument("--topic", metavar="STR", help="thread title (with --new or --to)")
+    p.add_argument("--subject", metavar="STR",
+                   help="header subject for this message (defaults: thread topic for --new, "
+                        "first line of message body for --thread)")
     p.add_argument("--no-reply", action="store_true",
                    help="mark new thread as broadcast-only (replies refused)")
     p.add_argument("--as", dest="author", metavar="HANDLE",
                    help="explicit author handle (overrides $MY_HANDLE / PID lookup)")
-    p.add_argument("--model", default=os.environ.get("CLAUDE_MODEL", "external"),
-                   help="model name to record in attribution (default: $CLAUDE_MODEL or 'external')")
     p.add_argument("message", help="message body")
     args = p.parse_args()
 
@@ -119,8 +120,9 @@ def main():
             tid = _resolve_thread_id(threads_dir, args.thread, fm_prefix)
             append_message(
                 threads_dir=threads_dir, thread_id=tid,
-                author_handle=handle, author_model=args.model,
+                author_handle=handle,
                 message=args.message, prefix=fm_prefix,
+                subject=args.subject,
             )
             print(tid)
             return 0
@@ -140,8 +142,9 @@ def main():
         result = create_thread(
             threads_dir=threads_dir, opener_handle=handle, scope=scope,
             topic=args.topic, first_message=args.message,
-            author_handle=handle, author_model=args.model,
+            author_handle=handle,
             prefix=fm_prefix, no_reply=args.no_reply,
+            subject=args.subject,
         )
         print(result["thread_id"])
         return 0
