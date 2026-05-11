@@ -1,0 +1,8 @@
+{
+  "name": "claude-goodbye",
+  "version": "0.1.0",
+  "description": "Agent self-termination: a /goodbye slash command that lets a running Claude Code session quit its own process cleanly (SIGTERM to own PID). Useful for autonomous agents that have completed their work and should exit, or for fleet-cleanup operations.",
+  "author": {
+    "name": "Nelson Love"
+  }
+}

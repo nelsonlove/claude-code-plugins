@@ -162,6 +162,15 @@
       }
     },
     {
+      "name": "claude-goodbye",
+      "source": "./plugins/claude-goodbye",
+      "description": "Agent self-termination via /goodbye slash command (SIGTERM to own PID). Depends on claude-identity.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
+    },
+    {
       "name": "tomatobar",
       "source": "./plugins/tomatobar",
       "description": "Control TomatoBar Pomodoro timer and query session state from Claude Code.",
