@@ -35,6 +35,10 @@ fi
 # Read default_tags from $PWD/.claude/claude-identity.local.md if present
 PROJECT_CONFIG="$PWD/.claude/claude-identity.local.md"
 
+# Make lib.wordlist importable from the embedded Python below.
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+export PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+
 python3 - "$SESSION_ID" "$META_FILE" "$PROJECT_CONFIG" <<'PYEOF'
 import json, os, re, sys
 from datetime import datetime, timezone
@@ -56,9 +60,22 @@ if os.path.isfile(project_config):
     except Exception:
         pass
 
+# v0.1.3: auto-assign a handle from the wordlist. Deterministic on session_id,
+# so reconnects to the same UUID get the same name. Fall through silently if
+# the wordlist module isn't importable for some reason — sidecar still gets
+# created, just without an auto-handle.
+handle = None
+try:
+    from lib.wordlist import pick_handle
+    handle = pick_handle(session_id)
+except Exception:
+    pass
+
 ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
 data = {"schema": 1, "session_id": session_id, "tags": default_tags,
         "added": ts, "modified": ts}
+if handle:
+    data["handle"] = handle
 
 import tempfile
 fd, tmp = tempfile.mkstemp(dir=os.path.dirname(meta_file),
