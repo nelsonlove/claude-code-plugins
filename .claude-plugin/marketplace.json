@@ -96,7 +96,7 @@
       "name": "claude-identity",
       "source": "./plugins/claude-identity",
       "description": "Cross-session identity substrate: session handle resolution, scope/tag CRUD, match function. Foundation for claude-threads, jd-context, and other plugins that need to know which sessions are alive and what they're interested in.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "author": {
         "name": "Nelson Love"
       }

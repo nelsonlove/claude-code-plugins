@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# bin/jump — bring an agent's live note to the foreground in Obsidian.
+#
+# Usage: jump <handle>
+#
+# No Claude agent involved. Zero token cost. Opens the live note for the
+# given handle via Obsidian's URL scheme. macOS-only (uses osascript +
+# `open` URL handlers).
+#
+# Vault path defaults to "Obsidian"; override with OBSIDIAN_VAULT_NAME env.
+
+set -u
+
+HANDLE="${1:-}"
+if [ -z "$HANDLE" ]; then
+  echo "usage: jump <handle>" >&2
+  exit 1
+fi
+
+VAULT="${OBSIDIAN_VAULT_NAME:-Obsidian}"
+# URL-encode the path segments containing spaces and special chars:
+#   "03 LLMs & agents" -> 03%20LLMs%20%26%20agents
+#   "03.15 Agent live notes" -> 03.15%20Agent%20live%20notes
+NOTE_PATH="00-09%20System/03%20LLMs%20%26%20agents/03.15%20Agent%20live%20notes/${HANDLE}"
+
+# Activate Obsidian first so the open URL surfaces the right window if it
+# was hidden or in a different space.
+osascript -e 'tell application "Obsidian" to activate' 2>/dev/null || true
+
+open "obsidian://open?vault=${VAULT}&file=${NOTE_PATH}"

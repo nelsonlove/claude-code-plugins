@@ -20,7 +20,23 @@ Or for development: clone `~/repos/claude-code-plugins/` and install locally.
 - `/claude-identity:sessions` — list all live sessions
 - `/claude-identity:scope add|rm|list [<tag>] [--session <handle>]` — manage tags
 - `/claude-identity:match <scope-csv>` — debug scope-pattern matches
-- `/claude-identity:rename <handle>` — agent self-rename (v0.1.2). Equivalent to typing `/rename` but agent-callable. Validates handle format, rejects collisions with other live sessions.
+- `/claude-identity:rename <handle>` — agent self-rename. Writes the persistent agent handle to the sessions-meta sidecar (v0.1.3+: decoupled from CC's built-in `/rename`, which controls the session topic/focus label). Validates format, rejects collisions with other live sessions.
+- `/claude-identity:live-update [--section <name>] [--cadence <desc>] <body>` — write or update this agent's live working note in the Obsidian vault. Created on first invocation at `03 LLMs & agents/03.15 Agent live notes/<handle>.md`; updated in place thereafter. Nelson follows these live in Obsidian.
+
+## Handle vs CC name (v0.1.3+)
+
+The plugin distinguishes two identifiers:
+
+- **Handle** (persistent agent name like `quill`, `wren`, `cairn`): lives in the sessions-meta sidecar at `~/.claude/sessions-meta/<session-id>.json`. Set via `/claude-identity:rename` or auto-assigned by the SessionStart hook from a curated single-word pool (`lib/wordlist.py`). Used by claude-threads, status line display, cross-session addressing.
+- **Name** (session topic/focus): lives in CC's registry at `~/.claude/sessions/<pid>.json`. Set via CC's built-in `/rename <topic>`. Shown wherever CC natively displays the session name.
+
+The two are independent. `/rename` no longer touches the handle (as of v0.1.3); `/claude-identity:rename` no longer touches the topic.
+
+Resolution chain (back-compat): sidecar `handle` → CC `name` (v0.1.2 legacy) → UUID-prefix fallback.
+
+## Convenience tools
+
+- `bin/jump <handle>` — opens an agent's live note in Obsidian via the URL scheme. Zero token cost; runs `osascript` + `open` directly. Put on your PATH or alias as `obsidian-jump`.
 
 ## Statusline integration
 

@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 from lib.sidecar import (
-    SidecarPath, create_if_absent, read_sidecar, add_tag, remove_tag, list_tags
+    SidecarPath, create_if_absent, read_sidecar, add_tag, remove_tag, list_tags,
+    get_handle, set_handle,
 )
 
 SID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -109,3 +110,71 @@ def test_corrupt_json_treated_as_empty(tmp_home):
     path = SidecarPath(tmp_home, SID).path
     path.write_text("{ this is not valid json")
     assert list_tags(tmp_home, SID) == []
+
+
+# ---------------------------------------------------------------------------
+# v0.1.3: handle field
+# ---------------------------------------------------------------------------
+
+def test_get_handle_missing_sidecar_returns_none(tmp_home):
+    assert get_handle(tmp_home, SID) is None
+
+
+def test_get_handle_absent_field_returns_none(tmp_home):
+    create_if_absent(tmp_home, SID, default_tags=[])
+    assert get_handle(tmp_home, SID) is None
+
+
+def test_create_if_absent_with_handle(tmp_home):
+    created = create_if_absent(tmp_home, SID, default_tags=[], handle="quill")
+    assert created is True
+    data = json.loads(SidecarPath(tmp_home, SID).path.read_text())
+    assert data["handle"] == "quill"
+    assert get_handle(tmp_home, SID) == "quill"
+
+
+def test_set_handle_writes_field_and_bumps_mtime(tmp_home):
+    create_if_absent(tmp_home, SID, default_tags=[])
+    path = SidecarPath(tmp_home, SID).path
+    mtime_before = path.stat().st_mtime
+    time.sleep(0.01)
+    changed = set_handle(tmp_home, SID, "quill")
+    assert changed is True
+    assert get_handle(tmp_home, SID) == "quill"
+    assert path.stat().st_mtime > mtime_before
+
+
+def test_set_handle_idempotent_no_mtime_bump(tmp_home):
+    """Setting handle to the current value is a no-op; mtime must not change."""
+    create_if_absent(tmp_home, SID, default_tags=[], handle="quill")
+    path = SidecarPath(tmp_home, SID).path
+    mtime_before = path.stat().st_mtime
+    time.sleep(0.01)
+    changed = set_handle(tmp_home, SID, "quill")
+    assert changed is False
+    assert path.stat().st_mtime == mtime_before
+
+
+def test_set_handle_auto_inits_sidecar(tmp_home):
+    """If sidecar doesn't exist, set_handle creates it with handle present."""
+    path = SidecarPath(tmp_home, SID).path
+    assert not path.exists()
+    changed = set_handle(tmp_home, SID, "quill")
+    assert changed is True
+    assert path.exists()
+    data = json.loads(path.read_text())
+    assert data["handle"] == "quill"
+    assert data["session_id"] == SID
+    assert data["tags"] == []
+
+
+def test_set_handle_overwrites_existing(tmp_home):
+    """Changing handle from one value to another bumps mtime and updates field."""
+    create_if_absent(tmp_home, SID, default_tags=[], handle="oldname")
+    path = SidecarPath(tmp_home, SID).path
+    mtime_before = path.stat().st_mtime
+    time.sleep(0.01)
+    changed = set_handle(tmp_home, SID, "newname")
+    assert changed is True
+    assert get_handle(tmp_home, SID) == "newname"
+    assert path.stat().st_mtime > mtime_before

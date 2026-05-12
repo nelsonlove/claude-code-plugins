@@ -1,17 +1,21 @@
 """Adapter over Claude Code's session registry at $HOME/.claude/sessions/<pid>.json.
 
-CC owns this directory. v0.1.0 was strictly read-only. v0.1.2 adds a narrow
-write path: `set_handle` updates the `name` field — the same field CC's
-built-in `/rename` writes, so the two are interchangeable. Empirical probe
-showed CC does not clobber `name` during status=busy windows.
+CC owns this directory. v0.1.0 was strictly read-only. v0.1.2 added a write
+path through CC's `name` field. v0.1.3 decouples: the persistent agent handle
+now lives in the sessions-meta sidecar (`lib.sidecar`), independent from CC's
+`name` field. The sidecar handle is the canonical source; CC's `name` is read
+as a back-compat fallback for sessions that set handle via the v0.1.2 path.
+
+Resolution order: sidecar `handle` → CC registry `name` → UUID-prefix.
 
 Liveness is checked via kill -0 <pid>.
 """
 import json
 import os
 import re
-import tempfile
 from pathlib import Path
+
+from lib import sidecar
 
 
 class AmbiguousHandle(Exception):
@@ -54,11 +58,20 @@ def _is_alive(pid):
         return False
 
 
-def _handle_for_entry(entry):
+def _handle_for_entry(entry, home):
+    """Resolve the handle for a session entry. Order:
+      1. sidecar `handle` field (v0.1.3+ canonical)
+      2. CC registry `name` field (v0.1.2 back-compat)
+      3. UUID-prefix fallback (no handle ever set)
+    """
+    sid = entry.get("sessionId", "")
+    if sid:
+        h = sidecar.get_handle(home, sid)
+        if h:
+            return h
     name = entry.get("name")
     if name:
         return name
-    sid = entry.get("sessionId", "")
     return sid[:8] if sid else ""
 
 
@@ -77,7 +90,7 @@ def list_live_sessions(home):
         pid = entry.get("pid")
         if pid is None or not _is_alive(pid):
             continue
-        entry["handle"] = _handle_for_entry(entry)
+        entry["handle"] = _handle_for_entry(entry, home)
         out.append(entry)
     return out
 
@@ -90,12 +103,13 @@ def find_my_session(home, my_pid):
     entry = _read_entry(f)
     if entry is None:
         return None
-    entry["handle"] = _handle_for_entry(entry)
+    entry["handle"] = _handle_for_entry(entry, home)
     return entry
 
 
 def resolve_handle(home, session_id):
-    """Given a session UUID, return the handle (name or first-8-of-uuid). None if not found."""
+    """Given a session UUID, return the handle (sidecar / name / first-8-of-uuid).
+    None if no registry entry."""
     d = _sessions_dir(home)
     if not d.is_dir():
         return None
@@ -106,7 +120,7 @@ def resolve_handle(home, session_id):
         if entry is None:
             continue
         if entry.get("sessionId") == session_id:
-            return _handle_for_entry(entry)
+            return _handle_for_entry(entry, home)
     return None
 
 
@@ -141,7 +155,9 @@ def resolve_handle_or_uuid_to_session_id(home, identifier):
 
 
 # ---------------------------------------------------------------------------
-# v0.1.2: handle write path (set_handle / /claude-identity:rename)
+# v0.1.3: handle write path (set_handle / /claude-identity:rename).
+# v0.1.2 wrote CC's registry `name` field; v0.1.3 writes the sidecar `handle`
+# field instead — see module docstring for the resolution-chain rationale.
 # ---------------------------------------------------------------------------
 
 # Reserved tokens that would conflict with tag-matching semantics or look
@@ -185,29 +201,15 @@ def _validate_handle(handle):
     return h
 
 
-def _atomic_write_entry(path, data):
-    """Write a registry entry via tempfile + os.replace. Same pattern as
-    sessions-meta sidecar writes — atomic on POSIX, survives concurrent reads."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(
-        dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp"
-    )
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(data, f)
-        os.replace(tmp, str(path))
-    except Exception:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-
-
 def set_handle(home, my_pid, handle):
-    """Set the running session's handle by writing the `name` field of its
-    registry entry. Equivalent to the user typing /rename, but callable by the
-    agent itself (via the set_handle MCP tool or /claude-identity:rename).
+    """Set the running session's persistent agent handle by writing the
+    `handle` field of its sessions-meta sidecar (v0.1.3+).
+
+    Decoupled from CC's `name` field — CC's built-in `/rename` continues to
+    control the registry `name` (session topic/focus), while this controls
+    the persistent agent handle (`quill`, `wren`, etc.) used by claude-threads,
+    `/claude-identity:whoami`, `/claude-identity:sessions`, and downstream
+    consumers.
 
     Validation:
       - handle matches the word-style pattern (see _validate_handle)
@@ -215,7 +217,7 @@ def set_handle(home, my_pid, handle):
       - handle does not look like a UUID prefix
       - no other LIVE session currently has that handle (collision check)
 
-    Returns: dict {ok: True, handle: <normalized>, previous: <prior name or None>}
+    Returns: dict {ok: True, handle: <normalized>, previous: <prior handle or None>}
     Raises: InvalidHandle, HandleCollision, KeyError (no registry entry for pid)
     """
     h = _validate_handle(handle)
@@ -227,12 +229,15 @@ def set_handle(home, my_pid, handle):
         raise KeyError(f"could not read registry entry at {pid_file}")
     my_session_id = entry.get("sessionId")
     # Collision check: any OTHER live session with this handle?
+    # list_live_sessions already populates `handle` via the sidecar→name→UUID chain.
     for other in list_live_sessions(home):
         if other["sessionId"] == my_session_id:
             continue  # ourselves — re-setting same handle is fine
         if other["handle"] == h:
             raise HandleCollision(h, other["sessionId"])
-    previous = entry.get("name")
-    entry["name"] = h
-    _atomic_write_entry(pid_file, entry)
+    # `previous` follows the same resolution chain consumers see: sidecar handle
+    # first, fall back to CC's name (legacy v0.1.2 path). Returns None only when
+    # neither was set — the session was on the bare UUID-prefix fallback.
+    previous = sidecar.get_handle(home, my_session_id) or entry.get("name")
+    sidecar.set_handle(home, my_session_id, h)
     return {"ok": True, "handle": h, "previous": previous}

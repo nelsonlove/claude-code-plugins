@@ -1,5 +1,5 @@
 ---
-description: Rename this session's handle (agent self-rename). Equivalent to the user typing /rename, but agent-callable.
+description: Set this session's persistent agent handle. Distinct from CC's built-in /rename (which controls the session topic/focus label).
 allowed-tools: ["mcp__claude-identity__set_handle"]
 argument-hint: "<handle>"
 ---
@@ -16,4 +16,6 @@ Validation rules (handled by the MCP tool):
 - Not UUID-prefix-shaped (8 hex chars)
 - Not already taken by another live session
 
-Behavioral note: this writes the same `name` field that CC's built-in `/rename` writes, so the two are interchangeable. The handle becomes visible in CC's native UI and in `/claude-identity:whoami` / `/claude-identity:sessions` output.
+Behavioral note (v0.1.3+): writes the persistent agent handle to the sessions-meta sidecar at `~/.claude/sessions-meta/<session-id>.json`. **Decoupled from CC's built-in `/rename`**, which controls the registry `name` field (session topic/focus label). Use this for the persistent agent identity (`quill`, `wren`, etc.); use CC's `/rename` for the session's current-task label.
+
+The handle becomes visible in `/claude-identity:whoami` / `/claude-identity:sessions` output and is read by downstream consumers (claude-threads, status line). Resolution chain (back-compat): sidecar `handle` → CC registry `name` → UUID-prefix fallback.

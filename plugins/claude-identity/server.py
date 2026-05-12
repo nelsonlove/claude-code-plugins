@@ -11,17 +11,22 @@ Tools:
   - remove_tag       : remove tag (only original assigner in v2; v1: anyone)
   - list_tags        : list a session's tags
   - match            : test whether a session's tags match a given scope
+  - set_handle       : set the persistent agent handle (sidecar; v0.1.3+)
+  - update_live_note : write/update the per-agent live note in the Obsidian vault
 """
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
 # Ensure lib is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib import config, registry, sidecar
+from lib import config, live_note, registry, sidecar
 from lib.match import match as match_fn
+
+_UUID_PREFIX_RE = re.compile(r"^[0-9a-f]{8}$")
 
 
 VERSION = "0.1.0"
@@ -109,7 +114,7 @@ TOOLS = [
     },
     {
         "name": "set_handle",
-        "description": "Set this session's handle by writing the `name` field of its registry entry. Equivalent to the user typing /rename, but callable by the agent. Validates: lowercase word-style names (2-32 chars, optional single hyphen segment, e.g. 'cairn', 'wren', 'jd-cli-audit'); rejects reserved tokens (*, all, any, none, self, external, unknown), UUID-prefix-looking names, and handles already taken by another live session.",
+        "description": "Set this session's persistent agent handle (e.g. 'quill', 'wren', 'cairn'). v0.1.3+ writes to the sessions-meta sidecar — decoupled from CC's built-in /rename, which controls the registry name field (session topic/focus). Validates: lowercase word-style names (2-32 chars, optional single hyphen segment); rejects reserved tokens (*, all, any, none, self, external, unknown), UUID-prefix-looking names, and handles already taken by another live session.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -119,6 +124,28 @@ TOOLS = [
                 },
             },
             "required": ["handle"],
+        },
+    },
+    {
+        "name": "update_live_note",
+        "description": "Update this session's per-agent live note in the Obsidian vault (at 03 LLMs & agents/03.15 Agent live notes/<handle>.md). Created from template on first invocation; updated in place thereafter. Fails fast if the session's handle is still the UUID-prefix default — run /claude-identity:rename or wait for SessionStart auto-assign first. Refreshes the note's scope and cadence fields from claude-identity registry on every call.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "description": "Content to write into the target section",
+                },
+                "section": {
+                    "type": "string",
+                    "description": "Section name to update (defaults to 'Live notes'). Unknown section names are appended as new sections.",
+                },
+                "cadence": {
+                    "type": "string",
+                    "description": "Optional cadence description (e.g. 'every 5 min', 'as work progresses'). Stored in note frontmatter.",
+                },
+            },
+            "required": ["body"],
         },
     },
 ]
@@ -167,6 +194,26 @@ def call_tool(name, args):
         # someone else's. The pid is the parent CC session (same logic as
         # whoami: MCP server runs as subprocess of the CC session).
         return registry.set_handle(home(), os.getppid(), args["handle"])
+    if name == "update_live_note":
+        entry = registry.find_my_session(home(), os.getppid())
+        if entry is None:
+            raise RuntimeError("Could not resolve own session (no registry entry for parent PID)")
+        handle = entry["handle"]
+        if _UUID_PREFIX_RE.match(handle):
+            raise RuntimeError(
+                "Set a session handle first via /claude-identity:rename <name>. "
+                "Live notes need a stable agent handle to address."
+            )
+        scope = sidecar.list_tags(home(), entry["sessionId"])
+        return live_note.write_live_note(
+            home=home(),
+            session_id=entry["sessionId"],
+            handle=handle,
+            scope=scope,
+            cadence=args.get("cadence"),
+            section=args.get("section"),
+            body=args["body"],
+        )
     raise ValueError(f"Unknown tool: {name}")
 
 

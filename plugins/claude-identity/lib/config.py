@@ -17,6 +17,15 @@ except ImportError:
 
 
 DEFAULT_SESSIONS_META_DIR = "~/.claude/sessions-meta"
+# Live-notes directory: where per-agent `<handle>.md` files land. Default is
+# under `~/.claude/` so the plugin works out-of-the-box for anyone; users
+# typically override to an Obsidian-vault JD slot via the config TOML
+# `[paths] live_notes_dir = "..."`.
+DEFAULT_LIVE_NOTES_DIR = "~/.claude/agent-live-notes"
+# Template file path. When the file is absent on disk, load_template() falls
+# back to the baked DEFAULT_TEMPLATE string in lib.live_note — so an empty
+# config still produces valid notes.
+DEFAULT_LIVE_NOTE_TEMPLATE = "~/.claude/agent-live-notes/template.md"
 
 
 def _global_config_path(home):
@@ -40,6 +49,10 @@ def _read_global(home):
     paths = data.get("paths", {})
     if "sessions_meta_dir" in paths:
         out["sessions_meta_dir"] = paths["sessions_meta_dir"]
+    if "live_notes_dir" in paths:
+        out["live_notes_dir"] = paths["live_notes_dir"]
+    if "live_note_template" in paths:
+        out["live_note_template"] = paths["live_note_template"]
     return out
 
 
@@ -70,6 +83,8 @@ def load_config(home, project_root):
     """Layered config: defaults < global < project-local."""
     cfg = {
         "sessions_meta_dir": DEFAULT_SESSIONS_META_DIR,
+        "live_notes_dir": DEFAULT_LIVE_NOTES_DIR,
+        "live_note_template": DEFAULT_LIVE_NOTE_TEMPLATE,
         "default_tags": [],
     }
     cfg.update(_read_global(home))

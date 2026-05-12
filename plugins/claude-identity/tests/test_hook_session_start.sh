@@ -25,12 +25,18 @@ EOF
 cd "$TEST_PROJECT"
 HOME="$TEST_HOME" CLAUDE_SESSION_ID="hooktest-uuid" "$PLUGIN_DIR/hooks/identity-session-start.sh"
 
-# Assert sidecar contains default_tags
+# Assert sidecar contains default_tags AND an auto-assigned handle from wordlist
 SIDECAR="$TEST_HOME/.claude/sessions-meta/hooktest-uuid.json"
 test -f "$SIDECAR"
-python3 -c "
-import json
+PLUGIN_DIR="$PLUGIN_DIR" python3 -c "
+import json, sys, os
+sys.path.insert(0, os.environ['PLUGIN_DIR'])
 data = json.load(open('$SIDECAR'))
 assert data['tags'] == ['02.*', 'vault-sweeper'], f'got {data[\"tags\"]}'
+# v0.1.3: auto-handle from wordlist, deterministic on session_id
+assert 'handle' in data, f'handle field missing: keys={list(data.keys())}'
+from lib.wordlist import pick_handle
+expected = pick_handle('hooktest-uuid')
+assert data['handle'] == expected, f'got {data[\"handle\"]}, expected {expected}'
 print('OK')
 "
