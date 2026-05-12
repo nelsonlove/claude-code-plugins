@@ -35,6 +35,10 @@ fi
 # Read default_tags from $PWD/.claude/claude-identity.local.md if present
 PROJECT_CONFIG="$PWD/.claude/claude-identity.local.md"
 
+# Make lib.wordlist importable from the embedded Python below.
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+export PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+
 python3 - "$SESSION_ID" "$META_FILE" "$PROJECT_CONFIG" <<'PYEOF'
 import json, os, re, sys
 from datetime import datetime, timezone
@@ -56,9 +60,49 @@ if os.path.isfile(project_config):
     except Exception:
         pass
 
+# v0.1.3: auto-assign a handle from the wordlist. Deterministic on session_id,
+# so reconnects to the same UUID get the same name. Fall through silently if
+# the wordlist module isn't importable for some reason — sidecar still gets
+# created, just without an auto-handle.
+#
+# Collision check: hash collisions in the wordlist would otherwise produce two
+# live sessions with the same handle (and overwriting live notes). Scan other
+# live sidecars before claiming the word; if another session already has it,
+# fall through to UUID-prefix default. Cheap O(n_sessions) check at boot.
+handle = None
+try:
+    from lib.wordlist import pick_handle
+    candidate = pick_handle(session_id)
+    if candidate:
+        meta_dir = os.path.dirname(meta_file)
+        taken = False
+        try:
+            for f in os.listdir(meta_dir):
+                if not f.endswith(".json"):
+                    continue
+                p = os.path.join(meta_dir, f)
+                # Skip our own (we haven't written it yet, but be defensive)
+                if os.path.realpath(p) == os.path.realpath(meta_file):
+                    continue
+                try:
+                    other = json.load(open(p))
+                except Exception:
+                    continue
+                if other.get("handle") == candidate:
+                    taken = True
+                    break
+        except FileNotFoundError:
+            pass  # meta_dir doesn't exist yet — first session, no collisions
+        if not taken:
+            handle = candidate
+except Exception:
+    pass
+
 ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
 data = {"schema": 1, "session_id": session_id, "tags": default_tags,
         "added": ts, "modified": ts}
+if handle:
+    data["handle"] = handle
 
 import tempfile
 fd, tmp = tempfile.mkstemp(dir=os.path.dirname(meta_file),
