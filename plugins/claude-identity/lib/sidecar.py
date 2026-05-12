@@ -136,31 +136,6 @@ def get_handle(home, session_id):
     return data.get("handle")
 
 
-def get_live_note_last_handle(home, session_id):
-    """Return the handle the agent used on its last write_live_note call, or
-    None. Used to detect mid-session rename and follow the file."""
-    data = read_sidecar(home, session_id)
-    if not data:
-        return None
-    return data.get("live_note_last_handle")
-
-
-def set_live_note_last_handle(home, session_id, value):
-    """Record the handle used on the most recent write_live_note. Idempotent."""
-    path = SidecarPath(home, session_id).path
-    data = _read_or_empty(path)
-    if data is None:
-        ts = _now_iso()
-        data = {"schema": SCHEMA_VERSION, "session_id": session_id, "tags": [],
-                "added": ts, "modified": ts}
-    if data.get("live_note_last_handle") == value:
-        return False
-    data["live_note_last_handle"] = value
-    data["modified"] = _now_iso()
-    _atomic_write(path, data)
-    return True
-
-
 def get_live_note_seen_body_hash(home, session_id):
     """Return the last-known body sha256 of the agent's live note, or None.
 

@@ -15,14 +15,14 @@ Used by bin/watch-live (the long-running monitor script).
 from lib import sidecar
 from lib.live_note import (
     body_hash,
+    resolve_live_notes_dir,
     resolve_note_path,
-    resolve_vault_path,
 )
 
 
-def current_body_hash(vault, handle):
+def current_body_hash(live_notes_dir, handle):
     """Read the live note file and return its body sha256, or None if absent."""
-    path = resolve_note_path(vault, handle)
+    path = resolve_note_path(live_notes_dir, handle)
     if not path.exists():
         return None
     try:
@@ -32,7 +32,7 @@ def current_body_hash(vault, handle):
     return body_hash(text)
 
 
-def detect_user_edit(home, session_id, handle, vault=None):
+def detect_user_edit(home, session_id, handle, vault=None, live_notes_dir=None):
     """Compare the live note's current body hash against the watermark.
 
     Returns a dict:
@@ -40,10 +40,12 @@ def detect_user_edit(home, session_id, handle, vault=None):
       - {"changed": True, "current": <hash>, "previous": <hash-or-None>}
         — user edited; caller should emit an event and call accept_change()
         once handled to update the watermark.
+
+    `live_notes_dir` takes priority; `vault` is the legacy alias.
     """
-    if vault is None:
-        vault = resolve_vault_path()
-    cur = current_body_hash(vault, handle)
+    if live_notes_dir is None:
+        live_notes_dir = vault if vault is not None else resolve_live_notes_dir(home=home)
+    cur = current_body_hash(live_notes_dir, handle)
     seen = sidecar.get_live_note_seen_body_hash(home, session_id)
     if cur is None:
         # Note doesn't exist yet; nothing to compare.

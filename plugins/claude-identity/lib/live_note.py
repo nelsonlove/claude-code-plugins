@@ -1,15 +1,19 @@
 """Per-agent live note management (issue #24).
 
 Each session maintains a live working note at:
-    <vault>/00-09 System/03 LLMs & agents/03.15 Agent live notes/<handle>.md
+    <live_notes_dir>/<handle>.md
+
+Default `live_notes_dir` is `~/.claude/agent-live-notes/`. Override via
+config — typically to an Obsidian-vault JD slot like
+`<vault>/00-09 System/03 LLMs & agents/03.15 Agent live notes/`.
 
 Created on first /claude-identity:live-update invocation, updated in place
-thereafter. Distinct from `03.13 Agent notebook` (historical rollups) and
-`03.50 Agent friction log` (shared append-only).
+thereafter. Distinct from claude-notebook's `03.13 Agent notebook` (historical
+session rollups) and the shared append-only `03.50 Agent friction log`.
 
-Vault path resolution order:
-    1. OBSIDIAN_VAULT env var
-    2. Hardcoded default: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian
+If the agent renames mid-session, the next write goes to a new file at
+`<live_notes_dir>/<new-handle>.md`. The old file is left in place (no
+auto-rename); users can archive it manually or via a future doctor pass.
 """
 import hashlib
 import os
@@ -21,15 +25,12 @@ from pathlib import Path
 from lib import sidecar
 
 
-LIVE_NOTES_SUBPATH = Path("00-09 System") / "03 LLMs & agents" / "03.15 Agent live notes"
-
 # Built-in fallback template, used only when the configured template file
-# (default: 03.03 Templates for category 03/Agent live note for {{handle}}.md
-# in the vault) is missing. The vault file is the canonical source — edit
-# there to customize the shape; this string is just the rescue.
+# (default: `~/.claude/agent-live-notes/template.md`) is absent. Users with
+# an Obsidian vault typically override to a template file inside the vault
+# (e.g. `03.03 Templates for category 03/Agent live note for {{handle}}.md`).
 DEFAULT_TEMPLATE = """---
 title: Agent live note for {{handle}}
-jd-id: "03.15"
 created: {{date}}T{{time}}
 modified: {{date}}T{{time}}
 tags: [jd/agent-live]
@@ -69,37 +70,42 @@ linter-yaml-title-alias: Agent live note for {{handle}}
 """
 
 
-def resolve_vault_path(home=None, project_root=None):
-    """Return Path to the Obsidian vault. Order:
-      1. OBSIDIAN_VAULT env var
-      2. global config (`~/.claude/claude-identity/config.toml` `[paths] vault = "..."`)
-      3. project-local config
-      4. baked default in lib.config (iCloud Obsidian)
+def resolve_live_notes_dir(home=None, project_root=None):
+    """Return Path to the directory holding per-agent `<handle>.md` notes.
+
+    Resolution order:
+      1. `live_notes_dir` from global / project-local config
+      2. Baked default (`~/.claude/agent-live-notes/`)
+
+    The default lives under `~/.claude/` so the plugin works out-of-the-box
+    for any user. Users with an Obsidian vault typically override to a JD
+    slot like `<vault>/00-09 System/03 LLMs & agents/03.15 Agent live notes/`.
     """
-    env = os.environ.get("OBSIDIAN_VAULT")
-    if env:
-        return Path(env).expanduser()
     if home is None:
         home = os.path.expanduser("~")
     if project_root is None:
         project_root = os.getcwd()
     from lib import config
     cfg = config.load_config(home, project_root)
-    return Path(cfg["vault"]).expanduser()
+    return Path(cfg["live_notes_dir"]).expanduser()
 
 
 def resolve_template_path(home=None, project_root=None):
-    """Return Path to the live-note template file (in-vault). Resolved via
-    config — caller passes home/project_root if known, else they default to
-    the current process's $HOME and cwd."""
+    """Return Path to the live-note template file. Resolution order:
+      1. `live_note_template` from global / project-local config (full path)
+      2. Baked default (`~/.claude/agent-live-notes/template.md`)
+
+    If the resolved file doesn't exist on disk, `load_template()` falls back
+    to the baked DEFAULT_TEMPLATE string — so an unconfigured fresh install
+    still produces valid notes.
+    """
     if home is None:
         home = os.path.expanduser("~")
     if project_root is None:
         project_root = os.getcwd()
     from lib import config
     cfg = config.load_config(home, project_root)
-    vault = Path(cfg["vault"]).expanduser()
-    return vault / cfg["live_note_template"]
+    return Path(cfg["live_note_template"]).expanduser()
 
 
 def load_template(home=None, project_root=None):
@@ -114,9 +120,10 @@ def load_template(home=None, project_root=None):
     return DEFAULT_TEMPLATE
 
 
-def resolve_note_path(vault, handle):
-    """Path to a given handle's live note within the vault."""
-    return Path(vault) / LIVE_NOTES_SUBPATH / f"{handle}.md"
+def resolve_note_path(live_notes_dir, handle):
+    """Path to a given handle's live note. `live_notes_dir` is the configured
+    directory (full path)."""
+    return Path(live_notes_dir) / f"{handle}.md"
 
 
 def _now_parts():
@@ -225,8 +232,9 @@ def write_live_note(
     cadence,
     section,
     body,
-    vault=None,
+    live_notes_dir=None,
     template_text=None,
+    vault=None,  # deprecated; ignored
 ):
     """Create or update a live note for the given handle.
 
@@ -239,44 +247,26 @@ def write_live_note(
       section: optional section name to replace (e.g. "Current task"); if None,
                body is written into the "Live notes" section
       body: content to write
-      vault: override vault path (defaults to resolve_vault_path())
-      template_text: override template (defaults to load_template() — reads
-               the configured in-vault template file, falls back to baked
-               DEFAULT_TEMPLATE if missing)
+      live_notes_dir: override the directory for `<handle>.md` files (defaults
+               to resolve_live_notes_dir() — `live_notes_dir` config key,
+               default `~/.claude/agent-live-notes/`)
+      template_text: override template content (defaults to load_template())
+      vault: deprecated; ignored
 
-    Handle-rename mid-session: if the agent renamed since its last
-    write_live_note call (sidecar's `live_note_last_handle` differs from
-    current `handle`), the old `<old-handle>.md` file is renamed to
-    `<new-handle>.md` before the update. Track-the-current-session semantics
-    per issue #24.
+    Handle-rename mid-session: the new write creates a fresh `<new-handle>.md`
+    at the configured live_notes_dir. The old `<old-handle>.md` is left in
+    place — users can archive it manually or via a future doctor pass.
 
-    Returns: dict {ok: True, path: <str>, created: <bool>, renamed_from: <str-or-None>}
+    Returns: dict {ok: True, path: <str>, created: <bool>}
     """
-    vault = Path(vault) if vault else resolve_vault_path(home=home)
+    del vault  # accepted for back-compat, ignored
+    if live_notes_dir is not None:
+        notes_dir = Path(live_notes_dir)
+    else:
+        notes_dir = resolve_live_notes_dir(home=home)
     template = template_text if template_text is not None else load_template(home=home)
     target_section = section or "Live notes"
-    note_path = resolve_note_path(vault, handle)
-
-    # Handle-rename follow: if the agent renamed since its last write, move
-    # the old file to the new path.
-    renamed_from = None
-    if session_id:
-        try:
-            last_handle = sidecar.read_sidecar(home, session_id) or {}
-            last_handle = last_handle.get("live_note_last_handle")
-        except Exception:
-            last_handle = None
-        if last_handle and last_handle != handle:
-            old_path = resolve_note_path(vault, last_handle)
-            if old_path.exists() and not note_path.exists():
-                note_path.parent.mkdir(parents=True, exist_ok=True)
-                old_path.rename(note_path)
-                renamed_from = last_handle
-                # Update the handle field in frontmatter to reflect the rename.
-                if note_path.exists():
-                    text = note_path.read_text(encoding="utf-8")
-                    text = update_frontmatter_fields(text, {"handle": handle})
-                    _atomic_write(note_path, text)
+    note_path = resolve_note_path(notes_dir, handle)
     date, time = _now_parts()
     timestamp = f"{date}T{time}"
     scope_csv = ", ".join(scope) if scope else ""
@@ -321,10 +311,6 @@ def write_live_note(
     if seen and session_id:
         try:
             sidecar.set_live_note_seen_body_hash(home, session_id, seen)
-            sidecar.set_live_note_last_handle(home, session_id, handle)
         except Exception:
             pass  # state-tracking is best-effort; don't fail the write
-    return {
-        "ok": True, "path": str(note_path), "created": created,
-        "renamed_from": renamed_from,
-    }
+    return {"ok": True, "path": str(note_path), "created": created}

@@ -16,17 +16,16 @@ Then call the `update_live_note` MCP tool with `body`, optional `section`, optio
 
 ## Behavior
 
-- First invocation creates the note at `<vault>/00-09 System/03 LLMs & agents/03.15 Agent live notes/<handle>.md` from the configured template (default: `03.03 Templates for category 03/Agent live note for {{handle}}.md` in the vault; falls back to the baked default if absent). Substitutes `{{handle}}`, `{{date}}`, `{{time}}`, `{{session-id}}`, `{{session-id-short}}`, `{{scope-csv}}`, `{{cadence}}`.
+- First invocation creates the note at `<live_notes_dir>/<handle>.md` from the configured template (defaults to baked `DEFAULT_TEMPLATE` if no template file is configured). Substitutes `{{handle}}`, `{{date}}`, `{{time}}`, `{{session-id}}`, `{{session-id-short}}`, `{{scope-csv}}`, `{{cadence}}`.
 - Subsequent invocations update the targeted section in place; frontmatter `modified`, `scope` (from `claude-identity:list_tags`), and `cadence` are refreshed on every call.
-- **Mid-session rename follow** (v0.1.3+): if the agent renamed since its last invocation (via `/claude-identity:rename`), the previous `<old-handle>.md` file is renamed to `<new-handle>.md` and the frontmatter `handle:` field is updated, before the section write. The live note tracks the current session, not the historical handle. If both `<old>.md` and `<new>.md` already exist (collision with a peer's note), the rename is skipped and the new file is updated in place.
+- **Mid-session rename**: the new invocation creates a fresh `<new-handle>.md` at `live_notes_dir`. The old `<old-handle>.md` is left in place — no auto-rename. Users archive old files manually or via a future doctor pass.
 - **Fails fast** if the session's handle is still the UUID-prefix default. Run `/claude-identity:rename <name>` (or wait for the SessionStart wordlist auto-assign) before invoking this.
 
 ## Configuration
 
-Vault path and template location come from:
-1. `OBSIDIAN_VAULT` env var (vault only)
-2. `~/.claude/claude-identity/config.toml` — `[paths] vault = "..."` and `[paths] live_note_template = "..."`
-3. Baked defaults (iCloud Obsidian vault, standard JD template path)
+Two config keys in `~/.claude/claude-identity/config.toml`:
+- `[paths] live_notes_dir` — directory holding per-agent `<handle>.md` files. Default: `~/.claude/agent-live-notes/`. Users with an Obsidian vault typically override to a JD slot.
+- `[paths] live_note_template` — path to the template file. Default: `~/.claude/agent-live-notes/template.md`. If the file is absent, the baked `DEFAULT_TEMPLATE` string in `lib/live_note.py` is used as fallback — so an unconfigured fresh install still produces valid notes.
 
 ## Output
 

@@ -1,16 +1,14 @@
-"""Tests for live_note (per-agent live notes in the Obsidian vault)."""
-import os
+"""Tests for live_note (per-agent live notes)."""
 from pathlib import Path
 
 import pytest
 
 from lib.live_note import (
     DEFAULT_TEMPLATE,
-    LIVE_NOTES_SUBPATH,
     render_template,
     replace_section,
     resolve_note_path,
-    resolve_vault_path,
+    resolve_live_notes_dir,
     session_id_short,
     update_frontmatter_fields,
     write_live_note,
@@ -20,19 +18,16 @@ from lib.live_note import (
 SID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 
-def test_resolve_vault_env_override(monkeypatch, tmp_path):
-    monkeypatch.setenv("OBSIDIAN_VAULT", str(tmp_path))
-    assert resolve_vault_path() == tmp_path
-
-
-def test_resolve_vault_default_when_no_env(monkeypatch):
+def test_resolve_live_notes_dir_default(monkeypatch, tmp_home):
+    """No config → default `~/.claude/agent-live-notes/` expanded."""
     monkeypatch.delenv("OBSIDIAN_VAULT", raising=False)
-    assert resolve_vault_path().name == "Obsidian"
+    result = resolve_live_notes_dir(home=str(tmp_home), project_root=str(tmp_home))
+    assert str(result).endswith("/.claude/agent-live-notes")
 
 
 def test_resolve_note_path(tmp_path):
-    expected = tmp_path / LIVE_NOTES_SUBPATH / "quill.md"
-    assert resolve_note_path(tmp_path, "quill") == expected
+    """Per-agent note lands at <live_notes_dir>/<handle>.md — no subpath."""
+    assert resolve_note_path(tmp_path, "quill") == tmp_path / "quill.md"
 
 
 def test_session_id_short():
@@ -81,11 +76,12 @@ def test_write_live_note_creates_from_template(tmp_path):
         cadence="as work progresses",
         section="Current task",
         body="testing the live note",
-        vault=tmp_path,
+        live_notes_dir=tmp_path,
     )
     assert result["created"] is True
     path = Path(result["path"])
     assert path.exists()
+    assert path == tmp_path / "quill.md"
     text = path.read_text()
     assert "handle: quill" in text
     assert f"session-id: {SID}" in text
@@ -93,6 +89,8 @@ def test_write_live_note_creates_from_template(tmp_path):
     assert "testing the live note" in text
     # The default "(what the agent is doing right now)" body should be gone:
     assert "(what the agent is doing right now)" not in text
+    # jd-id should NOT be in template (config-driven dir, not vault-specific)
+    assert "jd-id:" not in text
 
 
 def test_write_live_note_updates_existing(tmp_path):
@@ -100,13 +98,13 @@ def test_write_live_note_updates_existing(tmp_path):
         home=str(tmp_path), session_id=SID, handle="quill", scope=[],
         cadence="as work progresses",
         section="Current task", body="first content",
-        vault=tmp_path,
+        live_notes_dir=tmp_path,
     )
     result = write_live_note(
         home=str(tmp_path), session_id=SID, handle="quill", scope=["jd/04*"],
         cadence="every 5 min",
         section="Current task", body="updated content",
-        vault=tmp_path,
+        live_notes_dir=tmp_path,
     )
     assert result["created"] is False
     text = Path(result["path"]).read_text()
@@ -123,12 +121,10 @@ def test_write_live_note_defaults_section_to_live_notes(tmp_path):
         home=str(tmp_path), session_id=SID, handle="quill", scope=[],
         cadence="as work progresses",
         section=None, body="freeform jot",
-        vault=tmp_path,
+        live_notes_dir=tmp_path,
     )
-    text = (tmp_path / LIVE_NOTES_SUBPATH / "quill.md").read_text()
-    # The Live notes section should contain our jot:
+    text = (tmp_path / "quill.md").read_text()
     assert "freeform jot" in text
-    # And appear AFTER the "## Live notes" header:
     notes_idx = text.index("## Live notes")
     jot_idx = text.index("freeform jot")
     assert jot_idx > notes_idx
@@ -140,11 +136,31 @@ def test_write_live_note_unknown_section_appends(tmp_path):
         home=str(tmp_path), session_id=SID, handle="quill", scope=[],
         cadence="as work progresses",
         section="Custom Section", body="custom body",
-        vault=tmp_path,
+        live_notes_dir=tmp_path,
     )
-    text = (tmp_path / LIVE_NOTES_SUBPATH / "quill.md").read_text()
+    text = (tmp_path / "quill.md").read_text()
     assert "## Custom Section" in text
     assert "custom body" in text
+
+
+def test_write_live_note_after_rename_new_file_old_stays(tmp_path):
+    """Per Nelson's call: handle rename doesn't move the old file. New write
+    creates `<new-handle>.md` fresh; `<old-handle>.md` stays in place."""
+    write_live_note(
+        home=str(tmp_path), session_id=SID, handle="oldname", scope=[],
+        cadence="x", section=None, body="first",
+        live_notes_dir=tmp_path,
+    )
+    write_live_note(
+        home=str(tmp_path), session_id=SID, handle="newname", scope=[],
+        cadence="x", section=None, body="second",
+        live_notes_dir=tmp_path,
+    )
+    assert (tmp_path / "oldname.md").exists(), "old file should still exist"
+    assert (tmp_path / "newname.md").exists(), "new file should be created"
+    new_text = (tmp_path / "newname.md").read_text()
+    assert "second" in new_text
+    assert "handle: newname" in new_text
 
 
 def test_default_template_has_required_sections():
@@ -152,3 +168,9 @@ def test_default_template_has_required_sections():
     for section in ["Current task", "Completed in this session",
                     "Pending / awaiting review", "Open questions", "Live notes"]:
         assert f"## {section}" in DEFAULT_TEMPLATE
+
+
+def test_default_template_no_jd_id():
+    """Per Nelson's call: live notes shouldn't carry jd-id frontmatter
+    (their location is configurable; jd-id only makes sense for vault users)."""
+    assert "jd-id:" not in DEFAULT_TEMPLATE
