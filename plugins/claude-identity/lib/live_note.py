@@ -33,7 +33,7 @@ DEFAULT_TEMPLATE = """---
 title: Agent live note for {{handle}}
 created: {{date}}T{{time}}
 modified: {{date}}T{{time}}
-tags: [jd/agent-live]
+tags: [agent-live]
 handle: {{handle}}
 session-id: {{session-id}}
 scope: [{{scope-csv}}]
