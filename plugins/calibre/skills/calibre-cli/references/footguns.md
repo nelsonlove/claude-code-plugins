@@ -279,18 +279,23 @@ Especially dangerous for:
 PROPOSED=$(grep -m1 'dc:title' /tmp/book.opf | sed -E 's/.*<dc:title>([^<]+)<.*/\1/')
 CURRENT=$(calibredb list --library-path "$LIB" --fields=title --search="id:$ID" --for-machine | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['title'])")
 
-# Tokenize both, drop stopwords, check word overlap
-python3 -c "
-import sys
+# Tokenize both, drop stopwords, check word overlap.
+# NOTE: pass titles via env vars (not shell interpolation into the Python source).
+# Titles routinely contain apostrophes ("The Devil's Dictionary"), and a single
+# quote inside a triple-quoted Python string passed via `python3 -c "..."` closes
+# the string early. The quoted heredoc (<<'PYEOF') keeps Python source literal.
+export PROPOSED CURRENT
+python3 - <<'PYEOF'
+import os, sys
 stops = {'the','a','an','of','for','in','and','&','to','on','by','from','with'}
-a = set(w.lower() for w in '''$PROPOSED'''.split() if w.lower() not in stops)
-b = set(w.lower() for w in '''$CURRENT'''.split() if w.lower() not in stops)
+a = set(w.lower() for w in os.environ['PROPOSED'].split() if w.lower() not in stops)
+b = set(w.lower() for w in os.environ['CURRENT'].split()  if w.lower() not in stops)
 overlap = a & b
 if not overlap or len(overlap) < 2:
     print('NO SIGNIFICANT OVERLAP — likely wrong ISBN. Do not apply.')
     sys.exit(1)
 print(f'Overlap: {overlap} — looks plausible')
-"
+PYEOF
 ```
 
 If overlap is empty or trivially small, **do not apply** — the ISBN was wrong. For series volumes and other tricky cases, prefer fetching by exact title + author + publisher hints rather than guessing the ISBN. If a title-based fetch returns multiple plausible matches and you can't disambiguate online, set metadata manually with `--field` flags based on what you know about the book.

@@ -38,15 +38,19 @@ This command **modifies the library**. Halt and confirm before writing.
    PROPOSED=$(grep -m1 'dc:title' /tmp/calibre-fix-$2.opf | sed -E 's/.*<dc:title>([^<]+)<.*/\1/')
    CURRENT=$(calibredb list --library-path "$1" --fields=title --search="id:$2" --for-machine \
              | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['title'])")
-   python3 -c "
+   export PROPOSED CURRENT
+   python3 - <<'PYEOF'
+   import os, sys
    stops = {'the','a','an','of','for','in','and','&','to','on','by','from','with'}
-   a = set(w.lower() for w in '''$PROPOSED'''.split() if w.lower() not in stops)
-   b = set(w.lower() for w in '''$CURRENT'''.split() if w.lower() not in stops)
+   a = set(w.lower() for w in os.environ['PROPOSED'].split() if w.lower() not in stops)
+   b = set(w.lower() for w in os.environ['CURRENT'].split()  if w.lower() not in stops)
    overlap = a & b
    print(f'Overlap: {overlap}')
-   import sys; sys.exit(0 if len(overlap) >= 2 else 1)
-   "
+   sys.exit(0 if len(overlap) >= 2 else 1)
+   PYEOF
    ```
+
+   The `export` + `os.environ` pattern is deliberate — passing the title strings via env vars rather than shell-interpolating them into the Python source. Titles routinely contain apostrophes ("The Devil's Dictionary", "Nietzsche's Genealogy of Morals"), and a single quote inside a triple-quoted Python string passed via `python3 -c "..."` closes the string early and raises a `SyntaxError`. The quoted heredoc (`<<'PYEOF'`) prevents shell expansion inside the Python source so apostrophes pass through cleanly.
 
    If the overlap check fails (fewer than 2 significant shared words), **do not present the metadata as if it's good**. Tell the user: "The ISBN $3 returned title '$PROPOSED' which does not match the current title '$CURRENT'. This looks like the wrong book. Want me to try a different ISBN, fall back to a title-based search, or set metadata manually?"
 
