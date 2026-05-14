@@ -1,0 +1,9 @@
+{
+  "name": "calibre",
+  "version": "0.1.0",
+  "description": "Tools and knowledge for managing Calibre ebook libraries via the calibredb / ebook-meta / fetch-ebook-metadata / ebook-convert / calibre-server CLI suite. Captures footguns, canonical workflows, and the OPF round-trip metadata pattern.",
+  "author": {
+    "name": "Nelson Love"
+  },
+  "keywords": ["calibre", "ebook", "epub", "mobi", "library", "metadata"]
+}
