@@ -224,6 +224,15 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "calibre",
+      "source": "./plugins/calibre",
+      "description": "Calibre ebook library curation — calibredb / ebook-meta / fetch-ebook-metadata / ebook-convert / calibre-server CLI knowledge skill plus slash commands for audit, backup, fix-metadata (OPF round-trip with ISBN sanity check), dedup, and bulk ingest. Captures 20 footguns including the wrong-ISBN-returns-confident-wrong-book trap and the corrupt-PDF embed crash.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }
