@@ -18,13 +18,15 @@ Calibre has **no built-in book-level merge subcommand**. The workaround is `cali
 
    ```sql
    SELECT lower(title) AS norm,
-          GROUP_CONCAT(id ORDER BY id) AS ids,
+          GROUP_CONCAT(id) AS ids,
           COUNT(*) AS n
    FROM books
    GROUP BY norm
    HAVING n > 1
    ORDER BY n DESC, norm;
    ```
+
+   Note: SQLite's `GROUP_CONCAT` does not accept `ORDER BY` inside the aggregate (that syntax is MySQL-only — it would raise a syntax error here). The IDs come back in undefined order, which is fine for display since we present each row as a triage candidate; if a deterministic order matters for downstream tooling, wrap the query in a CTE and sort the outer query.
 
 3. For each candidate group, also pull:
    - Authors for each id (so we can confirm same author, not just same title)

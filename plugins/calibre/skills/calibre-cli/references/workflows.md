@@ -349,7 +349,7 @@ DB="$LIB/metadata.db"
 
 # Find candidate duplicate pairs by normalized title
 sqlite3 -readonly "$DB" "
-  SELECT lower(title) AS norm, GROUP_CONCAT(id ORDER BY id), COUNT(*) AS n,
+  SELECT lower(title) AS norm, GROUP_CONCAT(id), COUNT(*) AS n,
          GROUP_CONCAT(DISTINCT (
            SELECT GROUP_CONCAT(a.name, ' & ') FROM authors a
            JOIN books_authors_link bal ON bal.author=a.id WHERE bal.book=b.id
