@@ -39,48 +39,77 @@ The filesystem copy is the cheap fallback. The per-book OPFs are an independent 
 
 ## Recipe 2: Read-only library audit
 
-Surface metadata problems without changing anything. Safe to run with the GUI open.
+Surface metadata problems without changing anything. The SQL-heavy classes (B, C, E, F, G) are safe to run with the GUI open via `sqlite3 -readonly`; only the optional `calibredb check_library` health check needs the GUI closed or the Content Server. The two trickiest classes (A and D) use Python heuristics because pure-SQL versions either over-flag (multi-author author_sort entries naturally have multiple commas) or are awkward to express (token-set normalization).
 
 ```bash
 DB="$LIB/metadata.db"
 
-# 1. Calibre's own filesystem integrity check
-calibredb check_library --library-path "$LIB" --csv > /tmp/check_library.csv
+# 1. Health check (skip cleanly if GUI is holding the lock)
+HEALTH=$(calibredb check_library --library-path "$LIB" --csv 2>&1)
+if echo "$HEALTH" | grep -q "Another calibre program"; then
+  echo "Health: skipped — Calibre GUI is open."
+  echo "  Close the GUI or start the Content Server to enable this check."
+elif [ -z "$HEALTH" ]; then
+  echo "Health: clean."
+else
+  echo "$HEALTH"
+fi
 
 # 2. Quick stats
 sqlite3 -readonly "$DB" "
   SELECT 'books', COUNT(*) FROM books
   UNION ALL SELECT 'authors', COUNT(*) FROM authors
-  UNION ALL SELECT 'tags', COUNT(*) FROM tags
-  UNION ALL SELECT 'series', COUNT(*) FROM series
-  UNION ALL SELECT 'identifiers', COUNT(*) FROM identifiers
-  UNION ALL SELECT 'books_without_cover', COUNT(*) FROM books WHERE has_cover=0
-  UNION ALL SELECT 'books_without_isbn', COUNT(*) FROM books WHERE id NOT IN (SELECT book FROM identifiers WHERE type='isbn');
+  UNION ALL SELECT 'with_isbn', COUNT(DISTINCT book) FROM identifiers WHERE type='isbn'
+  UNION ALL SELECT 'with_cover', COUNT(*) FROM books WHERE has_cover=1
+  UNION ALL SELECT 'with_publisher', COUNT(DISTINCT book) FROM books_publishers_link
+  UNION ALL SELECT 'with_comments', COUNT(*) FROM comments;
 "
 
-# 3. Author dedup candidates (variant spellings)
-sqlite3 -readonly "$DB" "
-  SELECT a.id, a.name, COUNT(bal.book) AS books
-  FROM authors a LEFT JOIN books_authors_link bal ON bal.author=a.id
-  GROUP BY a.id ORDER BY a.name;
-"
+# 3. Class A — title/author swap (stopwords in author_sort)
+export DB
+python3 - <<'PYEOF'
+import sqlite3, os
+conn = sqlite3.connect(f"file:{os.environ['DB']}?mode=ro", uri=True)
+STOPS = [" the ", " of ", " and ", " for ", " in ", " what ", " did ", " from ", " by ", " to "]
+for id_, title, asort in conn.execute("SELECT id, title, author_sort FROM books"):
+    padded = " " + (asort or "").lower() + " "
+    matched = [s.strip() for s in STOPS if s in padded]
+    if matched:
+        print(f"  #{id_}: title={title[:55]!r}  author_sort={asort[:60]!r}  [{matched}]")
+PYEOF
 
-# 4. Likely duplicate-title pairs
+# 4. Class D — author dedup candidates (token-set normalization)
+python3 - <<'PYEOF'
+import sqlite3, os, re
+conn = sqlite3.connect(f"file:{os.environ['DB']}?mode=ro", uri=True)
+def norm(name):
+    return " ".join(sorted(re.findall(r"[a-z]+", name.lower())))
+groups = {}
+for id_, name in conn.execute("SELECT id, name FROM authors"):
+    groups.setdefault(norm(name), []).append((id_, name))
+for key, variants in sorted(groups.items()):
+    if len(variants) > 1:
+        ids = ",".join(str(i) for i, _ in variants)
+        names = " | ".join(n for _, n in variants)
+        print(f"  [{key}] ({len(variants)}× / ids {ids}): {names}")
+PYEOF
+
+# 5. Class E — duplicate-title candidates
 sqlite3 -readonly "$DB" "
   SELECT lower(title) AS norm, GROUP_CONCAT(id), COUNT(*)
   FROM books GROUP BY norm HAVING COUNT(*) > 1;
 "
 
-# 5. Books with filename-as-title (looks like ISBN or hash)
+# 6. Class B — filename-as-title
 sqlite3 -readonly "$DB" "
   SELECT id, title FROM books
-  WHERE title GLOB '[0-9][0-9][0-9][0-9]*.pdf'
-     OR title GLOB '[a-f0-9]{8}*'
+  WHERE title GLOB '[0-9][0-9][0-9][0-9]*'
      OR title LIKE '%.pdf'
-     OR title LIKE '%.epub';
+     OR title LIKE '%.epub'
+     OR title GLOB '*[a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9]*';
 "
 
-# 6. Books with cruft in title (publisher tags, source markers)
+# 7. Class F — cruft in titles
 sqlite3 -readonly "$DB" "
   SELECT id, title FROM books
   WHERE title LIKE '%z-lib.org%'
@@ -88,13 +117,30 @@ sqlite3 -readonly "$DB" "
      OR title LIKE '%(epub)%'
      OR title LIKE '%nodrm%';
 "
+
+# 8. Class C — dirty author strings
+sqlite3 -readonly "$DB" "
+  SELECT id, name FROM authors
+  WHERE name LIKE '%;%' OR name LIKE '%(Author)%' OR name LIKE '%, author%' OR name LIKE '%;'
+     OR name GLOB '*[A-Z].[A-Z]*';
+"
+
+# 9. Class G — Unknown authors
+sqlite3 -readonly "$DB" "
+  SELECT b.id, b.title FROM books b
+  WHERE b.id IN (SELECT book FROM books_authors_link WHERE author IN (SELECT id FROM authors WHERE name='Unknown'))
+     OR b.id NOT IN (SELECT book FROM books_authors_link);
+"
 ```
 
 Each query has a story:
-- Author dedup candidates: variants ("Solomon, Robert C." vs "Robert C.Solomon" vs "Solomon, Robert C.;Higgins, Kathleen M.") that should collapse to one canonical entry.
-- Duplicate-title pairs: book records that should be merged via `add_format` + `remove`.
-- Filename-as-title: Calibre fell back to filename because the source PDF had no metadata. ISBN often visible in filename.
-- Cruft: source-site markers ("z-lib.org") and DRM-removal markers ("nodrm") that leaked from the ripper into the title.
+- **Class A (stopword heuristic)**: real author_sort entries are `Lastname, Firstname` patterns — they essentially never contain space-padded stopwords like ` the `, ` of `, ` and `. Book titles do. So a stopword match in author_sort is a strong swap signal. Multi-comma is **not** a good signal alone (multi-author entries naturally have multiple commas).
+- **Class D (token-set normalization)**: lowercase the name, strip punctuation, split into tokens, sort, rejoin. `Robert C. Solomon` and `Solomon, Robert C.` both produce `c robert solomon` — they collide. Catches the obvious variant cluster. Doesn't catch fuzzy variants like `Kathleen Higgins` vs `Kathleen M. Higgins` (different token counts); that's a v0.1.2 goal.
+- **Class E**: book records that should be merged via `add_format` + `remove`.
+- **Class B**: Calibre fell back to filename because the source PDF had no metadata. ISBN often visible in filename — `/calibre:fix-metadata` can use it.
+- **Class F**: source-site markers (`z-lib.org`) and DRM-removal markers (`nodrm`) that leaked from the ripper into the title.
+- **Class C**: cruft like `Solomon, Robert C., author` from messy import strings.
+- **Class G**: books with no author or with the literal author "Unknown".
 
 ---
 
