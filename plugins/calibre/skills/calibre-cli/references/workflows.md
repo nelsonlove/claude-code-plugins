@@ -70,7 +70,7 @@ export DB
 python3 - <<'PYEOF'
 import sqlite3, os
 conn = sqlite3.connect(f"file:{os.environ['DB']}?mode=ro", uri=True)
-STOPS = [" the ", " of ", " and ", " for ", " in ", " what ", " did ", " from ", " by ", " to "]
+STOPS = [" the ", " of ", " and ", " for ", " in ", " what ", " did ", " from ", " to "]  # " by " excluded — would match "Foreword by X" / "Edited by Y" author_sort entries
 for id_, title, asort in conn.execute("SELECT id, title, author_sort FROM books"):
     padded = " " + (asort or "").lower() + " "
     matched = [s.strip() for s in STOPS if s in padded]

@@ -14,6 +14,12 @@ This command is **read-only**. Do not mutate anything. The output is a triage re
 
 2. Verify the library exists and contains `metadata.db` (filesystem case) or responds to a probe `calibredb list --limit=1` (Content Server case). If not, stop and report the error.
 
+3. **For the filesystem case**, export `DB` as an env var once for the whole audit so each Python block can read it via `os.environ['DB']` without restating the path:
+   ```bash
+   export DB="<path to metadata.db>"
+   ```
+   (Skip this if running against a Content Server — Python-based class checks need direct DB access and aren't applicable in that mode; fall back to `calibredb`-based versions if a future PR adds them.)
+
 ## What to surface
 
 Use the queries below, grouped by repair class. The heuristics here are tuned to **minimize false positives** at the cost of occasionally missing edge cases — see notes in each section. For deeper detail, consult Recipe 2 in `references/workflows.md` from the `calibre-cli` skill.
@@ -23,11 +29,12 @@ Use the queries below, grouped by repair class. The heuristics here are tuned to
 Records where the title and author got flipped during import. Signature: `author_sort` contains stopwords (`the`, `of`, `and`, `for`, `in`, etc.) that are essentially never present in a person's name but extremely common in book titles. Do **not** key on comma count — multi-author entries naturally have multiple commas (one per author).
 
 ```bash
-export DB="<path to metadata.db>"
 python3 - <<'PYEOF'
 import sqlite3, os
 conn = sqlite3.connect(f"file:{os.environ['DB']}?mode=ro", uri=True)
-STOPS = [" the ", " of ", " and ", " for ", " in ", " what ", " did ", " from ", " by ", " to "]
+# Note: " by " deliberately omitted — would false-positive on real author_sort
+# entries like "Foreword by Smith, John" or "Illustrated by Robertson, Keith".
+STOPS = [" the ", " of ", " and ", " for ", " in ", " what ", " did ", " from ", " to "]
 hits = 0
 for id_, title, asort in conn.execute("SELECT id, title, author_sort FROM books"):
     padded = " " + (asort or "").lower() + " "
