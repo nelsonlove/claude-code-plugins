@@ -337,15 +337,15 @@ This unlocks fixes that were previously impossible. It also introduces a differe
 - **Translator and translation confusion.** A book's cover may say "translated by X" but Claude's training data may strongly associate the title with a different (more famous) translator. For translated works, validate the translator against the actual copyright/title-page text rather than letting Claude fill from prior associations.
 - **Series-volume hallucination.** Vision is bad at "is this Volume 2 or Volume 3 of the series?" The cover often doesn't show a series index, and Claude will guess. Either require `series_index` to come from text (copyright page) and not vision, or accept only `series` (the name) and never `series_index`.
 - **Subtitle vs title mix-up.** When a cover has stacked typography ("Hegel's Idealism" / "The Satisfactions of Self-Consciousness"), Claude sometimes picks the subtitle as the title. Cross-check with first-page text if available.
-- **ISBN hallucination.** A 13-digit ISBN is structurally plausible to generate — Claude will produce one if asked. **Never let a vision proposal write `identifiers:isbn:...`.** The plugin explicitly drops any `identifiers` field returned by Claude on parse; the prompt also tells it not to emit one. Footgun #19 is non-negotiable here: a hallucinated ISBN is the worst-case metadata corruption (silently authoritative but wrong).
+- **ISBN hallucination.** A 13-digit ISBN is structurally plausible to generate — Claude will produce one if asked. **Never let a vision proposal write `identifiers:isbn:...`.** The plugin is designed to drop any `identifiers` field returned by Claude on parse, and the prompt instructs Claude not to emit one. Footgun #19 is non-negotiable here: a hallucinated ISBN is the worst-case metadata corruption (silently authoritative but wrong). Before relying on this behaviour, verify in the installed plugin's README and source.
 
-**Mitigations the plugin enforces:**
+**Mitigations the plugin is designed to enforce** (verify against the installed plugin's README — this section reflects the design intent, not a runtime probe):
 
 - Per-field confidence (`high` / `medium` / `low`) required from Claude. Low-confidence fields are pre-unchecked in the diff dialog.
 - Title-overlap check (`references/checks.md#title-overlap-check`) applied to proposed title against current title before the diff dialog opens.
-- ISBN read-only — vision proposals can never write to `identifiers`.
+- ISBN read-only — vision proposals never write to `identifiers`.
 - No silent writes — every batch requires the user to click through a diff dialog.
-- Per-book audit log at `~/Library/Logs/calibre-claude-metadata.jsonl` (one line per book with `{book_id, accepted_fields, rejected_fields, model, timestamp}`). Use this to retrospectively review what landed.
+- Per-book audit log written by the plugin (path and format documented in its README; planned default `~/Library/Logs/calibre-claude-metadata.jsonl` with one line per book containing `{book_id, accepted_fields, rejected_fields, model, timestamp}`). Use it to retrospectively review what landed.
 
 **When to prefer the CLI flow over the GUI plugin:**
 
