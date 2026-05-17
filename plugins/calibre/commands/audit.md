@@ -49,15 +49,34 @@ PYEOF
 
 ### Class B — Filename-as-title
 
-Titles that are clearly raw filenames (Calibre fell back to filename because the source file lacked metadata):
+Titles that are clearly raw filenames (Calibre fell back to filename because the source file lacked metadata). Split into two sub-classes because the prescriptions diverge sharply:
+
+**Class B1 — Fixable: ISBN-shaped filename.** The "title" contains the answer. Extract the ISBN, fetch metadata.
+
+```sql
+-- ISBN-13: title starts with 978 or 979 followed by 10+ digits
+-- ISBN-10: title is exactly 10 digits (optionally with .pdf/.epub suffix)
+SELECT id, title FROM books
+WHERE title GLOB '97[89][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*'
+   OR (length(title) IN (10, 14, 15)
+       AND title GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9X]*');
+```
+
+The ISBN-10 detector has a higher false-positive rate (serial numbers, dewey decimals) — verify by attempting `fetch-ebook-metadata --isbn=<extracted>` and applying the title-overlap check from `skills/calibre-cli/references/checks.md` before accepting the match.
+
+**Class B2 — Unfixable: generic filename-as-title.** No programmatic lookup key. Examples: `book1.epub`, `untitled.pdf`, `a3f8c91d0e.pdf`, `final_v2.epub`.
 
 ```sql
 SELECT id, title FROM books
-WHERE title GLOB '[0-9][0-9][0-9][0-9]*'   -- ISBN-shaped numeric prefix
-   OR title LIKE '%.pdf'
-   OR title LIKE '%.epub'
-   OR title GLOB '*[a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9]*';  -- hash-like
+WHERE (title LIKE '%.pdf' OR title LIKE '%.epub' OR title LIKE '%.mobi' OR title LIKE '%.azw3'
+       OR title GLOB '*[a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9]*')
+  -- Exclude what B1 already caught
+  AND title NOT GLOB '97[89][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*'
+  AND NOT (length(title) IN (10, 14, 15)
+           AND title GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9X]*');
 ```
+
+These records have nothing to look up. Fixes need a human reading the cover, or a vision-based tool — see the "Suggested next commands" section below.
 
 ### Class C — Dirty author strings
 
@@ -147,8 +166,10 @@ fi
 After running every section, present a single categorized findings report. For each class, list affected IDs with title/author preview. End with a totals summary and suggested next commands:
 
 - "X books with title/author swaps → run `/calibre:fix-metadata` per record"
-- "Y duplicate pairs → run `/calibre:dedup` to merge"
-- "Z books with Unknown authors and no ISBN → manual research needed"
+- "Y books with ISBN-shaped filenames (Class B1) → run `/calibre:fix-metadata` per record; the title itself is the ISBN to feed in"
+- "Z books with generic filename-as-title (Class B2) → no CLI fix available. Open in the Calibre GUI and use the *Refine with Claude* action (calibre-claude-metadata plugin) for vision-based metadata recovery"
+- "W duplicate pairs → run `/calibre:dedup` to merge"
+- "V books with Unknown authors and no ISBN → manual research, or vision-based fixing in the GUI plugin"
 
 Do not propose fixes here. The follow-up commands handle that.
 
