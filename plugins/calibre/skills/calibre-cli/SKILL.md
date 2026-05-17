@@ -185,6 +185,7 @@ Read these references as they become relevant:
 - **`references/cli-reference.md`** — Per-subcommand option reference for `calibredb` and the other binaries. Consult before invoking a less common subcommand (`embed_metadata`, `catalog`, `clone`, `restore_database`).
 - **`references/schema.md`** — `metadata.db` SQLite schema, file layout on disk, OPF format basics, where things live in a Calibre library. Read this for any SQLite query work or filesystem-level inspection.
 - **`references/footguns.md`** — Detailed gotchas with reproductions: the `sort` vs `title_sort` field-name inconsistency, why `Solomon, Robert C.;Flores, Fernando;` becomes ONE author, `automerge` edge cases, the Trash behavior, PDF write limitations, language code requirements. Read this before any bulk edit.
+- **`references/checks.md`** — Reusable safety heuristics that guard against confidently-wrong metadata writes. The title-overlap check (footgun #19) lives here as the canonical implementation; reference this from any command or external plugin that proposes metadata changes.
 - **`references/workflows.md`** — End-to-end recipes: full library audit, batch ISBN-driven metadata fix, dedup pass, large-scale ingest from a folder dump, lossless format conversion. Each recipe is copy-pasteable but explains the reasoning so it can be adapted.
 
 If the user is doing a one-off lookup, this `SKILL.md` is enough. If they are doing a non-trivial batch operation, read the relevant reference file first.
