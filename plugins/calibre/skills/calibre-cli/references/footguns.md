@@ -316,3 +316,48 @@ calibredb embed_metadata --library-path "$LIB" <id> \
 The DB metadata is what Calibre uses internally; only the file's internal metadata stays stale. External readers (Kindle, iBooks, etc.) will see the old metadata until the PDF is rewritten through another tool.
 
 To proactively detect which PDFs are corrupt: `ebook-meta book.pdf --to-opf=/tmp/probe.opf` will error out cleanly on broken files. `qpdf --check book.pdf` (if qpdf is installed) does a deeper structural validation.
+
+## 21. Vision-based metadata fixing — new failure modes
+
+**Context.** The `calibre-claude-metadata` plugin (in-process calibre plugin, lives in its own repo) handles cases where the CLI flow can't help: books with garbled OCR titles, generic filenames (audit Class B2), books without ISBNs, and scanned PDFs where text extraction returns nothing. It sends the cover image plus the first few pages (rendered as images for scanned PDFs, extracted as text otherwise) to Claude and asks for proposed metadata.
+
+This unlocks fixes that were previously impossible. It also introduces a different failure mode profile than ISBN-based lookup.
+
+**What vision-based fixing solves well:**
+
+- Class B2 records (`book1.epub`, `untitled.pdf`) — cover usually has the title.
+- Scanned PDFs with no embedded text — first-page render gives Claude the title page.
+- Foreign-language books where text extraction is garbled.
+- Books where the cover lists author + subtitle + series but the embedded EPUB metadata has none of it.
+
+**New failure modes to watch for:**
+
+- **Confident author hallucination.** Cover style (font, layout) can hint at "academic press" or "fantasy paperback" — Claude may invent plausible-sounding authors when the cover doesn't actually credit anyone visible. Always check author confidence; treat `low` or `medium` as untrustworthy.
+- **Edition confusion.** First printing and a 30-years-later reprint often share the same cover art. The publisher and pubdate fields are the highest-risk ones for vision-based proposals — the publisher name on the spine may not match the actual publisher of *this* copy if the book changed hands. Prefer leaving publisher/pubdate alone unless the proposal carries `high` confidence and a clear reasoning trace.
+- **Translator and translation confusion.** A book's cover may say "translated by X" but Claude's training data may strongly associate the title with a different (more famous) translator. For translated works, validate the translator against the actual copyright/title-page text rather than letting Claude fill from prior associations.
+- **Series-volume hallucination.** Vision is bad at "is this Volume 2 or Volume 3 of the series?" The cover often doesn't show a series index, and Claude will guess. Either require `series_index` to come from text (copyright page) and not vision, or accept only `series` (the name) and never `series_index`.
+- **Subtitle vs title mix-up.** When a cover has stacked typography ("Hegel's Idealism" / "The Satisfactions of Self-Consciousness"), Claude sometimes picks the subtitle as the title. Cross-check with first-page text if available.
+- **ISBN hallucination.** A 13-digit ISBN is structurally plausible to generate — Claude will produce one if asked. **Never let a vision proposal write `identifiers:isbn:...`.** The plugin is designed to drop any `identifiers` field returned by Claude on parse, and the prompt instructs Claude not to emit one. Footgun #19 is non-negotiable here: a hallucinated ISBN is the worst-case metadata corruption (silently authoritative but wrong). Before relying on this behaviour, verify in the installed plugin's README and source.
+
+**Mitigations the plugin is designed to enforce** (verify against the installed plugin's README — this section reflects the design intent, not a runtime probe):
+
+- Per-field confidence (`high` / `medium` / `low`) required from Claude. Low-confidence fields are pre-unchecked in the diff dialog.
+- Title-overlap check (`references/checks.md#title-overlap-check`) applied to proposed title against current title before the diff dialog opens.
+- ISBN read-only — vision proposals never write to `identifiers`.
+- No silent writes — every batch requires the user to click through a diff dialog.
+- Per-book audit log written by the plugin (path and format documented in its README; planned default `~/Library/Logs/calibre-claude-metadata.jsonl` with one line per book containing `{book_id, accepted_fields, rejected_fields, model, timestamp}`). Use it to retrospectively review what landed.
+
+**When to prefer the CLI flow over the GUI plugin:**
+
+- ISBN known or extractable from filename (audit Class B1) → `/calibre:fix-metadata` is more authoritative.
+- Bulk processing across hundreds of records where you want to script the loop → CLI.
+- Books with clean existing metadata that just need `embed_metadata` re-run → CLI.
+
+**When to prefer the GUI plugin over the CLI flow:**
+
+- Class B2 (generic filenames) → no ISBN to look up.
+- Scanned PDFs (no embedded text → `fetch-ebook-metadata` has nothing to match on).
+- Books `fetch-ebook-metadata` returned confidently-wrong matches for and you couldn't disambiguate by ISBN.
+- One-off review where seeing the cover thumbnail next to the proposal in a real UI is faster than command-line iteration.
+
+The two are complementary, not redundant. Run `/calibre:audit` first to triage by class; that tells you which tool fits each record.
