@@ -69,7 +69,8 @@ The ISBN-10 detector has a higher false-positive rate (serial numbers, dewey dec
 ```sql
 SELECT id, title FROM books
 WHERE (title LIKE '%.pdf' OR title LIKE '%.epub' OR title LIKE '%.mobi' OR title LIKE '%.azw3'
-       OR title GLOB '*[a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9]*')
+       -- Hash-shaped: SQLite GLOB is case-sensitive, so include both A-F and a-f
+       OR title GLOB '*[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]*')
   -- Exclude what B1 already caught
   AND title NOT GLOB '97[89][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*'
   AND NOT (length(title) IN (10, 14, 15)
