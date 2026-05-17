@@ -33,7 +33,14 @@ print(f'Overlap: {overlap} — looks plausible')
 PYEOF
 ```
 
-**Edge case — current title is itself garbage.** If the current title is a filename (`0195036506.pdf`), a hash (`a3f8c91d.pdf`), or otherwise meaningless, the overlap will be empty *even when the proposal is correct*. Detect this case and exempt it:
+**Edge case — current title is itself garbage.** If the current title is a filename (`0195036506.pdf`), a hash (`a3f8c91d.pdf`), or otherwise meaningless, the overlap will be empty *even when the proposal is correct*. Detect this case and exempt it.
+
+**Exit-code convention (shared with the overlap check):**
+
+- `exit 0` = "proceed with the normal flow" → current title looks real; **run the overlap check next**.
+- `exit 1` = "short-circuit" → current title is garbage; **skip the overlap check** and handle via the fallback below.
+
+This matches the overlap check's `exit 0` = plausible / `exit 1` = mismatch, so a wrapper script that chains the two can treat any `exit 1` as "stop the normal apply path."
 
 ```bash
 # Garbage-shape detection — current title gives no signal, so overlap is meaningless.
@@ -42,17 +49,17 @@ import os, sys, re
 t = os.environ['CURRENT']
 GARBAGE = [
     r'^\d{10,13}(\.\w+)?$',          # ISBN-shaped
-    r'^[a-f0-9]{8,}(\.\w+)?$',       # hash-shaped
+    r'^[A-Fa-f0-9]{8,}(\.\w+)?$',    # hash-shaped (case-insensitive; matches A3F8... and a3f8...)
     r'^(book|untitled|final|draft|file|document)[\s_-]*\d*(\.\w+)?$',  # generic
     r'^\w{1,3}(\.\w+)?$',            # absurdly short
 ]
 if any(re.match(p, t, re.I) for p in GARBAGE):
-    sys.exit(0)   # current is garbage; overlap check would be unreliable
-sys.exit(1)       # current is real; run the overlap check above
+    sys.exit(1)   # short-circuit: current is garbage, skip the overlap check
+sys.exit(0)       # proceed normally: current is real, run the overlap check
 PYEOF
 ```
 
-When the current title is garbage, the overlap check is *uninformative* — fall back to: (a) asking the user to confirm against the cover, (b) requiring a higher-confidence signal from the proposal source (e.g., for Claude proposals, require `confidence: high` on the title), or (c) leaving the record alone.
+When the garbage detector short-circuits (`exit 1`), the overlap check is *uninformative* — fall back to: (a) asking the user to confirm against the cover, (b) requiring a higher-confidence signal from the proposal source (e.g., for Claude proposals, require `confidence: high` on the title), or (c) leaving the record alone.
 
 **Why 2 words minimum, not 1.** "The", "A", "An", "Of" etc. would single-word-match between almost any pair of titles even after stopword filtering misses an unusual one. Two significant words is the empirical threshold that catches series-volume mix-ups (Vol VI vs Vol VII share "Routledge", "History", "Philosophy" — overlap is 3+ — but completely-different books share fewer than 2).
 

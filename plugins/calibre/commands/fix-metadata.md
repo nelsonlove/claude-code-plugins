@@ -38,9 +38,21 @@ This command **modifies the library**. Halt and confirm before writing.
    export PROPOSED=$(grep -m1 'dc:title' /tmp/calibre-fix-$2.opf | sed -E 's/.*<dc:title>([^<]+)<.*/\1/')
    export CURRENT=$(calibredb list --library-path "$1" --fields=title --search="id:$2" --for-machine \
                     | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['title'])")
-   # Run the heuristic in references/checks.md (exit 0 = plausible, exit 1 = mismatch).
-   # See that file for the env-var/apostrophe handling rationale and the garbage-shape
-   # exemption — do not inline a divergent copy here.
+   #
+   # Two-step flow — see references/checks.md for both scripts.
+   # Both share the convention: exit 0 = "proceed with the apply path", exit 1 = "stop".
+   #
+   # Step 5a: garbage-shape detector
+   #   exit 0 → current title is real → continue to 5b (overlap check)
+   #   exit 1 → current title is garbage (filename/hash/etc.) → SKIP 5b and use the
+   #            fallback below (ask user, require high confidence, or leave alone)
+   #
+   # Step 5b: title-overlap check (only if 5a exited 0)
+   #   exit 0 → titles overlap acceptably → proceed to step 6 (preview + confirm)
+   #   exit 1 → titles diverge sharply → do NOT apply; surface the mismatch warning
+   #
+   # See references/checks.md for both scripts and the env-var/apostrophe rationale.
+   # Do not inline a divergent copy here.
    ```
 
    If the overlap check fails (fewer than 2 significant shared words) and the current title is *not* garbage-shaped, **do not present the metadata as if it's good**. Tell the user: "The ISBN $3 returned title '$PROPOSED' which does not match the current title '$CURRENT'. This looks like the wrong book. Want me to try a different ISBN, fall back to a title-based search, or set metadata manually?"
