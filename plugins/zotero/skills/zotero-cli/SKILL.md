@@ -31,9 +31,9 @@ Local **reads** are safe while Zotero.app is open — SQLite supports concurrent
 
 Check current mode with `zotero-cli library list` (shows count of items) — but **do NOT run `zotero-cli config`** until you read the next section.
 
-## CRITICAL FOOTGUN: `zotero-cli config` dumps secrets
+## CRITICAL FOOTGUN: `zotero-cli config` leaks `OPENAI_API_KEY` and `GOOGLE_API_KEY`
 
-`zotero-cli config` (or `zotero-mcp` equivalent) prints **every recognized env var verbatim** — including `OPENAI_API_KEY` and `ZOTERO_API_KEY`. These end up in the shell scrollback, terminal logs, and (worst) any LLM session transcript.
+`zotero-cli config` prints the recognized env vars. **`ZOTERO_API_KEY` is obfuscated to `<first4>****` by default** — `--show-secrets` is required to see it in full. But `OPENAI_API_KEY` and `GOOGLE_API_KEY` are **not** in the obfuscation list — they print verbatim regardless of flags. These end up in shell scrollback, terminal logs, and (worst) any LLM session transcript.
 
 **Never run `zotero-cli config` in a Claude Code session.** Use targeted checks instead:
 
@@ -74,10 +74,10 @@ zotero-cli search --mode tag "philosophy,husserl"
 zotero-cli search --mode semantic "the hard problem of consciousness"
 
 # By Better BibTeX citation key (if BBT installed in Zotero)
-zotero-cli get bbt-key heidegger2010being
+zotero-cli search --mode citekey heidegger2010being
 
 # Filter results
-zotero-cli search --limit 5 --type book "Husserl"
+zotero-cli search --limit 5 "Husserl"
 zotero-cli search --collection "PhD reading" "..."
 ```
 
@@ -87,7 +87,7 @@ Semantic search requires:
 
 ```bash
 uv tool install 'zotero-mcp-server[semantic]'  # adds embedding deps
-zotero-cli db build                            # one-time index (~10 min for 3k items)
+zotero-cli db update                           # one-time index (~10 min for 3k items)
 zotero-cli db status                           # check sync state
 ```
 
@@ -97,8 +97,8 @@ zotero-cli db status                           # check sync state
 # Full metadata
 zotero-cli get metadata YHRALHP7
 
-# As BibTeX
-zotero-cli get metadata YHRALHP7 --format bibtex
+# As BibTeX (dedicated subcommand)
+zotero-cli get bibtex YHRALHP7
 
 # Recent additions
 zotero-cli get recent --limit 20
@@ -114,7 +114,7 @@ zotero-cli get collections
 ```bash
 # DOI — fetches canonical metadata, attempts open-access PDF cascade
 # (Unpaywall → arXiv → Semantic Scholar → PMC)
-zotero-cli add doi 10.1007/s10670-019-00220-4
+zotero-cli add doi 10.1007/s10670-019-00220-4 --collections "Inbox"
 
 # arXiv ID or URL — abstract + PDF
 zotero-cli add url https://arxiv.org/abs/2103.05456
@@ -122,43 +122,47 @@ zotero-cli add url https://arxiv.org/abs/2103.05456
 # Generic web page — uses Zotero translators
 zotero-cli add url "https://example.com/some-paper"
 
-# Local file (PDF/EPUB)
-zotero-cli add file /tmp/paper.pdf --collection "Inbox"
+# Local file (PDF/EPUB) — note --filepath flag and --collections (plural)
+zotero-cli add file --filepath /tmp/paper.pdf --collections "Inbox"
 ```
 
 DOI ingestion is the canonical workflow — Zotero fetches publisher metadata, then runs the PDF cascade, then deduplicates against existing items by DOI. If a duplicate is found, it skips (won't double-add).
 
-**Pass `--collection <name>`** to file the new item directly. Without it, items land in "My Library / no collection" and have to be filed manually in the GUI.
+**Pass `--collections <name>`** (plural — not `--collection`) to file the new item directly. Without it, items land in "My Library / no collection" and have to be filed manually in the GUI. To skip the PDF download for metadata-only ingestion: `--attach-mode linked_url`.
 
 ## Annotations
 
 PDF highlights and comments live in Zotero as child items of the parent paper. Extract them:
 
 ```bash
-# All annotations for one paper
+# All annotations for one paper (output is markdown by default)
 zotero-cli annotations list --item-key YHRALHP7
 
-# All annotations across a collection
-zotero-cli annotations list --collection "Dissertation core"
+# Include direct PDF extraction (slower, but catches annotations Zotero hasn't indexed yet)
+zotero-cli annotations list --item-key YHRALHP7 --pdf-extraction
 
-# Export as Markdown (good for literature review notes)
-zotero-cli annotations list --item-key YHRALHP7 --format markdown
+# Limit
+zotero-cli annotations list --item-key YHRALHP7 --limit 50
 ```
 
-Each annotation includes page number, text content, color, and any comment. **PDF annotations are only available if Zotero's PDF reader (or a sync) has indexed the file** — if you imported via DOI but never opened the PDF, the annotations array will be empty.
+The CLI scopes annotations by `--item-key` — there's no collection-scoped variant. For a whole collection, iterate items first (`zotero-cli get collection-items <COLL_KEY>`) and then call `annotations list` per item.
+
+Each annotation includes page number, text content, color, and any comment. **PDF annotations are only available if Zotero's PDF reader (or a sync) has indexed the file** — if you imported via DOI but never opened the PDF, the annotations array will be empty. `--pdf-extraction` forces a fresh extraction directly from the PDF, which works around stale Zotero indexes.
 
 ## Edit fields
 
 ```bash
-# Set a field
+# Set a field — every editable field has its own named flag
 zotero-cli edit YHRALHP7 --title "Corrected Title"
 
 # Add/remove tags
 zotero-cli edit YHRALHP7 --add-tags "reviewed,important" --remove-tags "todo"
 
-# Set multiple at once
-zotero-cli edit YHRALHP7 --field "publisher=MIT Press" --field "place=Cambridge, MA"
+# Set multiple at once — chain the per-field flags
+zotero-cli edit YHRALHP7 --publisher "MIT Press" --date "2010" --doi "10.7551/mitpress/example"
 ```
+
+Available edit flags include `--title`, `--creators` (JSON array), `--date`, `--publication-title`, `--abstract`, `--tags` (replace all), `--add-tags`, `--remove-tags`, `--collections`, `--doi`, `--url`, `--volume`, `--issue`, `--pages`, `--publisher`, `--isbn`, `--issn`, `--language`, `--short-title`, `--edition`, `--book-title`, `--extra`. There is no generic `--field key=value` form — each editable field has its own flag.
 
 **Edits go through the configured mode.** Local mode requires Zotero.app closed. Web/hybrid mode writes through the API and works with the GUI running.
 
@@ -167,11 +171,17 @@ zotero-cli edit YHRALHP7 --field "publisher=MIT Press" --field "place=Cambridge,
 Zotero's GUI duplicate detection is shallow (matches title + first author + year). `zotero-cli duplicates` exposes a deeper matcher:
 
 ```bash
-# Dry-run, show candidates
+# List duplicate candidates
 zotero-cli duplicates find
 
-# Merge a specific pair (keeps first item's metadata, moves children)
-zotero-cli duplicates merge ABC12345 XYZ98765
+# Merge — explicit named flags required, no positional args
+zotero-cli duplicates merge --keeper-key ABC12345 --duplicate-keys XYZ98765
+
+# Preview the merge first
+zotero-cli duplicates merge --keeper-key ABC12345 --duplicate-keys XYZ98765 --dry-run
+
+# Multiple duplicates collapse into one keeper — comma-separated
+zotero-cli duplicates merge --keeper-key ABC12345 --duplicate-keys XYZ98765,DEF11111
 ```
 
 Always run `find` before `merge`. Merge is destructive (the second item is removed). Make a backup first:
@@ -186,19 +196,21 @@ cp -R ~/Zotero "/tmp/zotero-backup-$(date +%Y-%m-%d-%H%M%S)"
 2. **SQLite lock** — local-mode writes fail when Zotero.app is running. Either quit Zotero or switch to hybrid mode.
 3. **Item keys are case-sensitive** — `YHRALHP7` and `yhralhp7` are different. Copy them verbatim.
 4. **DOI normalization** — Zotero stores DOIs lowercase. Search by DOI should also use lowercase or the canonical form returned by `doi.org`.
-5. **Better BibTeX is a separate Zotero plugin** — without it, `bbt-key` lookups silently return nothing. Install BBT in Zotero first if you rely on stable citation keys.
-6. **Semantic search needs `[semantic]` extra + index** — first attempts return "no semantic DB found" until `zotero-cli db build` completes.
-7. **PDF cascade can take 30+ seconds** — `add doi` will try multiple sources for the OA PDF. Set `--no-pdf` for metadata-only ingestion.
-8. **Collections are nested** — `get collections` shows a tree; `--collection` flags accept the full path (`Parent/Child`) or the leaf name if unambiguous.
+5. **Better BibTeX is a separate Zotero plugin** — without it, `search --mode citekey` silently returns nothing. Install BBT in Zotero first if you rely on stable citation keys.
+6. **Semantic search needs `[semantic]` extra + index** — first attempts return "no semantic DB found" until `zotero-cli db update` completes.
+7. **PDF cascade can take 30+ seconds** — `add doi` will try multiple sources for the OA PDF. Use `--attach-mode linked_url` for metadata-only ingestion.
+8. **`--collection` vs `--collections`** — search uses singular `--collection`, while `add doi` / `add file` / `edit` use plural `--collections`. Easy to swap by accident.
+9. **Edit has no generic `--field` flag** — every editable attribute has its own named flag (`--title`, `--publisher`, etc.). There's no `--field key=value` form.
+10. **`duplicates merge` requires named flags** — `--keeper-key` and `--duplicate-keys`. Positional args (e.g. `duplicates merge K1 K2`) will error.
 
 ## When to use what — quick decision tree
 
 - **"What's in my library on topic X?"** → `search` (default mode for general queries, `--mode semantic` for concept-level)
-- **"Get the metadata / citation for paper Y"** → `get metadata <KEY>` (or `--format bibtex`)
-- **"Add this paper I just read"** → `add doi <DOI>` (with `--collection`)
-- **"Extract my highlights from paper Y"** → `annotations list --item-key <KEY> --format markdown`
-- **"Fix this paper's metadata"** → `edit <KEY> --field key=value`
-- **"Find duplicates"** → `duplicates find` (then `merge` on specific pairs)
+- **"Get the metadata / citation for paper Y"** → `get metadata <KEY>` or `get bibtex <KEY>`
+- **"Add this paper I just read"** → `add doi <DOI> --collections <NAME>`
+- **"Extract my highlights from paper Y"** → `annotations list --item-key <KEY>` (add `--pdf-extraction` if Zotero hasn't indexed yet)
+- **"Fix this paper's metadata"** → `edit <KEY> --<field-name> "<value>"` (per-field flag, see Edit fields)
+- **"Find duplicates"** → `duplicates find` then `duplicates merge --keeper-key <K> --duplicate-keys <K1,K2,...>`
 - **"What collections do I have?"** → `get collections`
 - **"Recently added papers"** → `get recent --limit N`
 
@@ -211,13 +223,13 @@ If `zotero-cli` is misbehaving, you can read `zotero.sqlite` directly with `sqli
 sqlite3 -readonly ~/Zotero/zotero.sqlite "SELECT COUNT(*) FROM items WHERE itemTypeID NOT IN (SELECT itemTypeID FROM itemTypes WHERE typeName IN ('attachment', 'note', 'annotation'));"
 
 # Recent additions (item key → title)
+# Join on items.itemID (integer PK), NOT items.key (the 8-char string).
 sqlite3 -readonly ~/Zotero/zotero.sqlite \
-  "SELECT i.key, idv.value FROM items i
-   JOIN itemDataValues idv ON idv.valueID = (
-     SELECT valueID FROM itemData WHERE itemID = i.key AND fieldID = (
-       SELECT fieldID FROM fields WHERE fieldName = 'title'
-     )
-   )
+  "SELECT i.key, idv.value
+   FROM items i
+   JOIN itemData id ON id.itemID = i.itemID
+   JOIN itemDataValues idv ON idv.valueID = id.valueID
+   JOIN fields f ON f.fieldID = id.fieldID AND f.fieldName = 'title'
    ORDER BY i.dateAdded DESC LIMIT 10;"
 ```
 
@@ -225,6 +237,6 @@ The schema is documented at <https://www.zotero.org/support/dev/client_coding/di
 
 ## Related plugins worth knowing about
 
-- **Better BibTeX (BBT)** — install inside Zotero. Adds stable citation keys, auto-export to .bib files, JabRef-compatible field mappings. Without BBT, `zotero-cli get bbt-key` returns nothing.
+- **Better BibTeX (BBT)** — install inside Zotero. Adds stable citation keys, auto-export to .bib files, JabRef-compatible field mappings. Without BBT, `zotero-cli search --mode citekey <key>` returns nothing.
 - **ZotPilot** — separate MCP server focused on semantic search and literature-review drafting from your local library. Complementary to zotero-mcp-server for research-heavy workflows.
 - **Scite** — `zotero-mcp-server[scite]` extra adds citation tallies (support/contrast/mention counts) and retraction alerts. No Scite account required (uses public API).
