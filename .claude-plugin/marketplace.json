@@ -233,6 +233,15 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "zotero",
+      "source": "./plugins/zotero",
+      "description": "Zotero research library knowledge skill — zotero-cli / zotero-mcp (zotero-mcp-server). Captures local/web/hybrid library-access modes, the SQLite GUI-lock problem, the `zotero-cli config` secrets-exposure footgun (prints OPENAI_API_KEY/ZOTERO_API_KEY verbatim), and canonical workflows for search, DOI ingestion, annotation extraction, and BibTeX export.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }
