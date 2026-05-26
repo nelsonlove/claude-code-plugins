@@ -18,7 +18,7 @@ from lib.identity_client import (
 from lib.match import match
 
 
-VERSION = "0.2.3"
+VERSION = "0.2.4"
 
 
 def send(msg):
