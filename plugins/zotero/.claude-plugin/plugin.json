@@ -1,0 +1,9 @@
+{
+  "name": "zotero",
+  "version": "0.1.0",
+  "description": "Tools and knowledge for working with a Zotero research library via the zotero-cli / zotero-mcp CLI from zotero-mcp-server. Captures the local/web/hybrid modes, the GUI-lock problem (SQLite), the config-dumps-secrets footgun, and canonical workflows for search, annotations, and DOI ingestion.",
+  "author": {
+    "name": "Nelson Love"
+  },
+  "keywords": ["zotero", "citations", "bibtex", "research", "papers", "annotations", "doi"]
+}
