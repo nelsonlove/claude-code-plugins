@@ -117,8 +117,15 @@ def test_parse_handles_negative_int():
 
 
 def test_parse_treats_bare_dash_as_string():
-    """`-` alone shouldn't be interpreted as a number."""
-    fm, _ = parse('---\nfoo: "-"\n---\n\nbody\n')
+    """`-` alone shouldn't be interpreted as a number.
+
+    Unquoted input — exercises `_INT_RE` directly. The old
+    `lstrip('-').isdigit()` happened to also reject quoted input, but
+    the bare-dash path needs an explicit guard. Use unquoted YAML so
+    `_parse_scalar` receives a raw `-` and the integer detector is the
+    only thing standing between us and an `int()` crash on regression.
+    """
+    fm, _ = parse('---\nfoo: -\n---\n\nbody\n')
     assert fm["foo"] == "-"
 
 
