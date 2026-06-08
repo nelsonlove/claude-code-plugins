@@ -48,7 +48,7 @@ If a session genuinely touches no specific scope, use `"[[00 System management]]
 
 ### 4. Write the entry
 
-Use `Read` and `Write` for vault writes. The per-session-file shape means each session writes its own file (single writer), so `Read` → `Write` is safe — no race with concurrent agents. (For *shared* append-only files like a fleet-wide friction log, the rule is different: use `Bash` with `cat <<'EOF' >> '<path>'` to avoid Read→Edit races. That's not this file.)
+Use `Read` and `Write` for vault writes. The per-session-file shape means each session writes its own file (single writer), so `Read` → `Write` is safe — no race with concurrent agents. (For files that *are* written by multiple concurrent agents — e.g. a shared append-only log — use `Bash` with `cat <<'EOF' >> '<path>'` to avoid Read→Edit races. That's not this file.)
 
 **Case A: file doesn't exist (typical — fresh session).**
 
@@ -58,15 +58,23 @@ Instantiate from `03.03 Templates for category 03/Agent session.md`. Substitute 
 - `{{headline}}` → the headline (becomes H1 and `title`)
 - `{{session-id}}` → first 8 hex chars of the session UUID
 - `{{model-id}}` → active model (visible in the system prompt's environment block, e.g. `claude-opus-4-7`)
-- `{{scope-wikilink-1}}` … `{{scope-wikilink-N}}` → quoted wikilink strings for `session-scope:`
-- `{{topic-tag-1}}` … `{{topic-tag-N}}` → topic tags for `tags:`
+- `{{scope-wikilink-1}}`, `{{scope-wikilink-2}}`, `{{scope-wikilink-3}}` → quoted wikilink strings for `session-scope:`. **The template ships with exactly 3 slot lines** under `session-scope:`. If the session has fewer scopes, *delete* the unused `- "{{scope-wikilink-N}}"` lines entirely (don't leave the placeholders unfilled). If it has more, *add* additional `- "[[...]]"` list items. The list length should match the actual scope count.
+- `{{topic-tag-1}}`, `{{topic-tag-2}}`, `{{topic-tag-3}}` → topic tags for `tags:`. **Same rule:** the template's `tags:` line has exactly 3 slots. Trim unused `, {{topic-tag-N}}` items or add `, <new-tag>` items so the final list matches the actual tag count. Don't leave placeholders unfilled.
 - `{{body}}` → the body content
 
 Write the result to the resolved path.
 
 **Case B: file exists (you're updating an entry from earlier in the same session).**
 
-Read it, find the file via `session-id` match in frontmatter, update body and any changed metadata in place. Don't create a second file for the same session ID.
+Locate the existing file by grepping for the session-id in frontmatter under the expected month's subfolder:
+
+```bash
+grep -rl 'session-id: <8-char>' '~/obsidian/00-09 System/03 LLMs & agents/03.13 Agent notebook/YYYY-MM/'
+```
+
+If exactly one path matches, Read it, then Write the file in place with the updated body and any changed metadata (`modified:` to current timestamp, scope or tag list if it grew, headline if revised). If zero paths match, fall back to Case A (write a fresh file — the earlier run wasn't actually persisted). If more than one matches, that's a bug worth surfacing to the user; don't write blindly.
+
+Don't create a second file for the same session ID.
 
 ### 5. Confirm
 
