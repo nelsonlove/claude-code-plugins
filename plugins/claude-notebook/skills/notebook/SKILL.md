@@ -52,7 +52,7 @@ Use `Read` and `Write` for vault writes. The per-session-file shape means each s
 
 **Case A: file doesn't exist (typical — fresh session).**
 
-Instantiate from `03.03 Templates for category 03/Agent session.md`. Substitute placeholders:
+Instantiate from `03.03 Templates for category 03/claude-notebook/Agent session.md`. Substitute placeholders:
 - `{{datetime}}` → session start, `YYYY-MM-DDTHHMM` (no colon, for filename + title + alias)
 - `{{datetime-iso}}` → same but with colon for `created:`/`modified:` (e.g. `YYYY-MM-DDTHH:mm`)
 - `{{headline}}` → the headline (becomes H1 and `title`)
