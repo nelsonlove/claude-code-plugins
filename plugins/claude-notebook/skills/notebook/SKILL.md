@@ -36,7 +36,30 @@ Examples:
 
 If a session genuinely touches no specific scope, use `"[[00 System management]]"` as the catch-all. Wikilinks must be quoted strings in YAML.
 
-### 3. Resolve the path
+### 3. Consider the friction log
+
+Before writing the entry, ask: did anything in this session feel like cross-cutting friction worth logging — a broken convention, ambiguous routing, repeated question, tooling gap, or something you'd otherwise sigh at and forget?
+
+If **yes**, append a section to [[03.50 Agent friction log]] via the atomic-heredoc pattern (the log is shared across all agents — `Edit`/`Write` is blocked by a `PreToolUse` hook):
+
+```bash
+cat <<'EOF' >> '/Users/nelson/obsidian/00-09 System/03 LLMs & agents/03.50 Agent friction log.md'
+
+## YYYY-MM-DDTHH:MM · <your-handle>
+
+<observation in free-form prose>
+EOF
+```
+
+The friction-log entry is **separate from** the notebook entry — the notebook captures the session's narrative; the friction log captures cross-cutting tooling issues other agents and the planned `agent-log-rollup` auditor can learn from. Write both if both apply.
+
+If the friction also needs follow-up beyond noting the lesson, create a task in the appropriate `XX.02` with a `see friction log YYYY-MM-DDTHH:MM` cross-link (per [[03.05 Conventions & policies for category 03|03.05]] § "Friction-log entries are observations, not tasks").
+
+If **no** — nothing rose to friction-log level — skip this step. The log gets noisy if every session logs trivia. Calibration: would another agent reading this in six months learn something they didn't already know, or recognize a pattern they're also hitting? If neither, don't log it.
+
+See `~/.claude/CLAUDE.md` § "Notebook & Shared File Writes" for the atomic-append rule and the full file list it applies to.
+
+### 4. Resolve the path
 
 ```
 ~/obsidian/00-09 System/03 LLMs & agents/03.13 Agent notebook/YYYY-MM/Agent session YYYY-MM-DDTHHMM.md
@@ -46,13 +69,13 @@ If a session genuinely touches no specific scope, use `"[[00 System management]]
 - `YYYY-MM/` subfolder groups sessions by month. **Create the subfolder if it doesn't exist yet** (e.g., at the start of a new month).
 - Substitute `YYYY-MM-DDTHHMM` with the session's start time (no colon — JD forbids `:` in filenames).
 
-### 4. Write the entry
+### 5. Write the entry
 
 Use `Read` and `Write` for vault writes. The per-session-file shape means each session writes its own file (single writer), so `Read` → `Write` is safe — no race with concurrent agents. (For files that *are* written by multiple concurrent agents — e.g. a shared append-only log — use `Bash` with `cat <<'EOF' >> '<path>'` to avoid Read→Edit races. That's not this file.)
 
 **Case A: file doesn't exist (typical — fresh session).**
 
-Instantiate from `03.03 Templates for category 03/claude-notebook/Agent session.md`. Substitute placeholders:
+Instantiate from `00.03 Templates for the system/claude-notebook/D00-09 System/D03 LLMs & agents/Agent session.md`. Substitute placeholders:
 - `{{datetime}}` → session start, `YYYY-MM-DDTHHMM` (no colon, for filename + title + alias)
 - `{{datetime-iso}}` → same but with colon for `created:`/`modified:` (e.g. `YYYY-MM-DDTHH:mm`)
 - `{{headline}}` → the headline (becomes H1 and `title`)
@@ -76,7 +99,7 @@ If exactly one path matches, Read it, then Write the file in place with the upda
 
 Don't create a second file for the same session ID.
 
-### 5. Confirm
+### 6. Confirm
 
 Tell the user briefly: the path written and the headline. One short sentence.
 
