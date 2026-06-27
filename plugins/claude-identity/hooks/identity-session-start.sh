@@ -13,9 +13,9 @@ META_DIR="$HOME_DIR/.claude/sessions-meta"
 mkdir -p "$META_DIR"
 
 # Resolve session UUID. Per Phase 0 verification, either:
-#   - $CLAUDE_SESSION_ID is set in the env (preferred)
+#   - $CLAUDE_CODE_SESSION_ID (or legacy $CLAUDE_SESSION_ID) is set in the env (preferred)
 #   - We look up via PID -> ~/.claude/sessions/<pid>.json
-SESSION_ID="${CLAUDE_SESSION_ID:-}"
+SESSION_ID="${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}"
 if [ -z "$SESSION_ID" ]; then
   PID_FILE="$SESSIONS_DIR/$$.json"
   if [ ! -f "$PID_FILE" ]; then

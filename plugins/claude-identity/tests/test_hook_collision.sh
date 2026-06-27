@@ -35,7 +35,10 @@ EOF
 # is already taken and fall through to no-handle (sidecar gets created without
 # the handle field).
 cd "$TEST_PROJECT"
-HOME="$TEST_HOME" CLAUDE_SESSION_ID="hookcollision-uuid" "$PLUGIN_DIR/hooks/identity-session-start.sh"
+# Exercises the back-compat fallback: clear the primary CLAUDE_CODE_SESSION_ID (so an
+# ambient value from the surrounding session can't leak in) and provide only the legacy
+# CLAUDE_SESSION_ID. The session-start test covers the primary CLAUDE_CODE_SESSION_ID path.
+HOME="$TEST_HOME" CLAUDE_CODE_SESSION_ID= CLAUDE_SESSION_ID="hookcollision-uuid" "$PLUGIN_DIR/hooks/identity-session-start.sh"
 
 SIDECAR="$TEST_HOME/.claude/sessions-meta/hookcollision-uuid.json"
 test -f "$SIDECAR" || { echo "FAIL: sidecar not created"; exit 1; }
