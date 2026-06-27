@@ -28,7 +28,7 @@ from lib import sidecar
 # Built-in fallback template, used only when the configured template file
 # (default: `~/.claude/agent-live-notes/template.md`) is absent. Users with
 # an Obsidian vault typically override to a template file inside the vault
-# (e.g. `03.03 Templates for category 03/claude-identity/Agent live note for {{handle}}.md`).
+# (e.g. `00 System management/00.03 Templates for the system/claude-identity/D00-09 System/D03 LLMs & agents/Agent live note for {{handle}}.md`).
 DEFAULT_TEMPLATE = """---
 title: Agent live note for {{handle}}
 created: {{date}}T{{time}}
