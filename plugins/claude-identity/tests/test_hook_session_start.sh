@@ -23,7 +23,7 @@ EOF
 
 # Run hook from the test project dir
 cd "$TEST_PROJECT"
-HOME="$TEST_HOME" CLAUDE_SESSION_ID="hooktest-uuid" "$PLUGIN_DIR/hooks/identity-session-start.sh"
+HOME="$TEST_HOME" CLAUDE_CODE_SESSION_ID="hooktest-uuid" "$PLUGIN_DIR/hooks/identity-session-start.sh"
 
 # Assert sidecar contains default_tags AND an auto-assigned handle from wordlist
 SIDECAR="$TEST_HOME/.claude/sessions-meta/hooktest-uuid.json"
