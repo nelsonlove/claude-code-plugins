@@ -17,10 +17,12 @@ def run(hook_event):
     cfg = config.load_config(home=home, project_root=os.getcwd())
     threads_dir = cfg["threads_dir"]
 
-    # Resolve session id. CC sets CLAUDE_SESSION_ID for hooks; if missing,
-    # fall back to parent PID (the CC session is our parent, since the bash
-    # wrapper exec's into python).
-    sid = os.environ.get("CLAUDE_SESSION_ID") or discover_my_session_id(home, os.getppid())
+    # Resolve session id. CC sets CLAUDE_CODE_SESSION_ID (legacy: CLAUDE_SESSION_ID)
+    # for hooks; if missing, fall back to parent PID (the CC session is our parent,
+    # since the bash wrapper exec's into python).
+    sid = (os.environ.get("CLAUDE_CODE_SESSION_ID")
+           or os.environ.get("CLAUDE_SESSION_ID")
+           or discover_my_session_id(home, os.getppid()))
     if sid is None:
         sys.exit(0)  # no registry; bail silent
 
