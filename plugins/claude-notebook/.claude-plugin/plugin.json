@@ -1,5 +1,5 @@
 {
   "name": "claude-notebook",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Save the current Claude Code session as a per-session note in the JD vault's 03.13 Agent notebook/YYYY-MM/. One file per session, grouped by month — datetime in the filename (`Agent session YYYY-MM-DDTHHMM.md`), session metadata (id, model, scope, tags) in YAML frontmatter, body is just headline + free-form prose."
 }
