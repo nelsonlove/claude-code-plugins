@@ -22,7 +22,7 @@ See [[03.05 Conventions & policies for category 03#Engineering notebook—one fi
   - Key decisions made
   - **Open questions** — forks in the road, design calls deferred
   - **Loose ends** — small atoms that need 30 seconds next time
-- **Topic tags** — 3–7 relevant tags. Go in the `tags:` frontmatter array alongside `llm/agent`.
+- **Topic, not topic-tags** — notebook entries carry a single `agent/log` tag; topic is captured by `session-scope` wikilinks (step 2), *not* by topic tags. This is the canonical convention (see [[00.31 Tags]] and [[03.05 Conventions & policies for category 03#Engineering notebook—one file per session]]). Don't add `llm/agent` or free-form topic tags.
 
 ### 2. Identify touched scopes
 
@@ -82,7 +82,7 @@ Instantiate from `00.03 Templates for the system/claude-notebook/D00-09 System/D
 - `{{session-id}}` → first 8 hex chars of the session UUID
 - `{{model-id}}` → active model (visible in the system prompt's environment block, e.g. `claude-opus-4-7`)
 - `{{scope-wikilink-1}}`, `{{scope-wikilink-2}}`, `{{scope-wikilink-3}}` → quoted wikilink strings for `session-scope:`. **The template ships with exactly 3 slot lines** under `session-scope:`. If the session has fewer scopes, *delete* the unused `- "{{scope-wikilink-N}}"` lines entirely (don't leave the placeholders unfilled). If it has more, *add* additional `- "[[...]]"` list items. The list length should match the actual scope count.
-- `{{topic-tag-1}}`, `{{topic-tag-2}}`, `{{topic-tag-3}}` → topic tags for `tags:`. **Same rule:** the template's `tags:` line has exactly 3 slots. Trim unused `, {{topic-tag-N}}` items or add `, <new-tag>` items so the final list matches the actual tag count. Don't leave placeholders unfilled.
+- `tags:` → the template hardcodes `tags: [agent/log]`; leave it as-is. Don't add topic tags or `llm/agent` — topic is carried by `session-scope` (per step 1).
 - `{{body}}` → the body content
 
 Write the result to the resolved path.
@@ -110,7 +110,7 @@ Tell the user briefly: the path written and the headline. One short sentence.
 title: Agent session YYYY-MM-DDTHHMM
 created: YYYY-MM-DDTHH:mm
 modified: <linter-maintained — write same as created on first write>
-tags: [llm/agent, <topic-tags>]
+tags: [agent/log]
 aliases: [Agent session YYYY-MM-DDTHHMM]
 session-id: <8-char>
 session-model: <model-id>
