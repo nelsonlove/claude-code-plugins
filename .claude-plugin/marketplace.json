@@ -219,8 +219,8 @@
     {
       "name": "claude-notebook",
       "source": "./plugins/claude-notebook",
-      "description": "Save the current Claude Code session as a timestamped section appended to today's daily agent note in the JD vault's 03.13 Agent notebook/. Sessions accumulate as `## HH:MM — <headline>` sections within `Agent note for YYYY-MM-DD.md`.",
-      "version": "0.6.0",
+      "description": "Agent notebook for the JD vault. `/notebook` saves each session as a per-session note in `03.13 Agent notebook/YYYY-MM/`; `/notebook-rollup` generates weekly narrative rollups (`rollups/Agent rollup for YYYY-WNN.md`) for completed weeks.",
+      "version": "0.9.0",
       "author": {
         "name": "Nelson Love"
       }
