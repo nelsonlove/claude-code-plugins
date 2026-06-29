@@ -117,7 +117,13 @@ def main() -> int:
     current = week_key(cy, cw)
 
     if args.week:
-        key = week_key(*parse_week(args.week))
+        try:
+            iso_year, iso_week = parse_week(args.week)
+            date.fromisocalendar(iso_year, iso_week, 1)  # reject non-existent ISO weeks
+        except ValueError as exc:
+            print(json.dumps({"error": f"invalid --week {args.week!r}: {exc}"}))
+            return 2
+        key = week_key(iso_year, iso_week)
         files = sessions.get(key, [])
         rec = week_record(key, files)
         rec["already_rolled"] = key in rolled

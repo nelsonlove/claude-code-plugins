@@ -79,9 +79,11 @@ After the subagents finish, check every file written:
 
 ```bash
 cd "$HOME/obsidian/00-09 System/03 LLMs & agents/03.13 Agent notebook/rollups"
-for f in "Agent rollup for "<WEEK>".md"; do
-  grep -q '^\*\*Tags' "$f" && echo "FAIL $f: body Tags line" || true
-  grep -q '^uid:' "$f" && echo "WARN $f: invented uid (strip it — add-uid backfills)" || true
+# List the exact files you just wrote, one quoted entry per week:
+for f in "Agent rollup for 2026-W23.md" "Agent rollup for 2026-W24.md"; do
+  [ -f "$f" ] || { echo "FAIL: $f missing"; continue; }
+  grep -q '^\*\*Tags' "$f" && echo "FAIL $f: body **Tags** line"
+  grep -q '^uid:' "$f" && echo "WARN $f: invented uid (strip it — add-uid backfills)"
   grep -q '^## Scopes touched' "$f" || echo "FAIL $f: missing sections"
 done
 ```
