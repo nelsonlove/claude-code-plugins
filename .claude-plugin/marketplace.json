@@ -7,7 +7,11 @@
   "plugins": [
     {
       "name": "mail",
-      "source": "./plugins/mail",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-mail",
+        "ref": "v0.0.1"
+      },
       "description": "Mail handling with himalaya",
       "version": "0.0.1",
       "author": {
