@@ -1,8 +1,0 @@
-{
-  "name": "homebrew-audit",
-  "version": "0.2.0",
-  "description": "Audit and triage Homebrew packages via an org-mode workflow",
-  "author": {
-    "name": "Nelson"
-  }
-}

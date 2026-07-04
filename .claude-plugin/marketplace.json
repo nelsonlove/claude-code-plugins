@@ -85,7 +85,11 @@
     },
     {
       "name": "homebrew-audit",
-      "source": "./plugins/homebrew-audit",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-homebrew-audit",
+        "ref": "v0.2.0"
+      },
       "description": "Audit and triage Homebrew packages via an org-mode workflow with babel action blocks.",
       "version": "0.2.0",
       "author": {
