@@ -94,7 +94,11 @@
     },
     {
       "name": "claude-identity",
-      "source": "./plugins/claude-identity",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-claude-identity",
+        "ref": "v0.1.4"
+      },
       "description": "Cross-session identity substrate: session handle resolution, scope/tag CRUD, match function. Foundation for claude-threads, jd-context, and other plugins that need to know which sessions are alive and what they're interested in.",
       "version": "0.1.3",
       "author": {
