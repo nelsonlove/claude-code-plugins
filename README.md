@@ -32,30 +32,33 @@ used, and the marketplace mixes them freely:
   repo that also ships a CLI/Python package (the `*-py` repos, plus `jd` and
   `pim`).
 
-| Plugin | Version | Repository |
-|--------|---------|------------|
-| apple-mail | 0.1.0 | [apple-mail-py](https://github.com/nelsonlove/apple-mail-py) |
-| apple-music | 0.3.0 | [apple-music-py](https://github.com/nelsonlove/apple-music-py) |
-| apple-notes | 0.2.0 | [apple-notes-py](https://github.com/nelsonlove/apple-notes-py) |
-| backlog | 1.0.0 | [cc-backlog](https://github.com/nelsonlove/cc-backlog) |
-| calibre | 0.1.2 | [cc-calibre](https://github.com/nelsonlove/cc-calibre) |
-| claude-goodbye | 0.2.0 | [cc-claude-goodbye](https://github.com/nelsonlove/cc-claude-goodbye) |
-| claude-identity | 0.1.4 | [cc-claude-identity](https://github.com/nelsonlove/cc-claude-identity) |
-| claude-notebook | 0.9.0 | [cc-claude-notebook](https://github.com/nelsonlove/cc-claude-notebook) |
-| claude-threads | 0.2.4 | [cc-claude-threads](https://github.com/nelsonlove/cc-claude-threads) |
-| claude-tone | 0.1.0 | [cc-claude-tone](https://github.com/nelsonlove/cc-claude-tone) |
-| dayone | 1.0.0 | [cc-dayone](https://github.com/nelsonlove/cc-dayone) |
-| homebrew-audit | 0.2.0 | [cc-homebrew-audit](https://github.com/nelsonlove/cc-homebrew-audit) |
-| jd | 0.1.0 | [jd-cli](https://github.com/nelsonlove/jd-cli) |
-| mail | 0.0.1 | [cc-mail](https://github.com/nelsonlove/cc-mail) |
-| marked-preview | 0.1.0 | [cc-marked-preview](https://github.com/nelsonlove/cc-marked-preview) |
-| omnifocus | 3.0.0 | [omnifocus-py](https://github.com/nelsonlove/omnifocus-py) |
-| pim | 1.0.0 | [pim](https://github.com/nelsonlove/pim) |
-| safari | 0.2.0 | [safari-py](https://github.com/nelsonlove/safari-py) |
-| steipete-scripts | 0.0.1 | [cc-steipete-scripts](https://github.com/nelsonlove/cc-steipete-scripts) |
-| things | 0.1.0 | [things-py](https://github.com/nelsonlove/things-py) |
-| tomatobar | 1.0.0 | [cc-tomatobar](https://github.com/nelsonlove/cc-tomatobar) |
-| zotero | 0.1.0 | [cc-zotero](https://github.com/nelsonlove/cc-zotero) |
+Versions are not duplicated here — each plugin's version lives in its
+`plugin.json` and the manifest's pinned `ref` tag.
+
+| Plugin | Repository |
+|--------|------------|
+| apple-mail | [apple-mail-py](https://github.com/nelsonlove/apple-mail-py) |
+| apple-music | [apple-music-py](https://github.com/nelsonlove/apple-music-py) |
+| apple-notes | [apple-notes-py](https://github.com/nelsonlove/apple-notes-py) |
+| backlog | [cc-backlog](https://github.com/nelsonlove/cc-backlog) |
+| calibre | [cc-calibre](https://github.com/nelsonlove/cc-calibre) |
+| claude-goodbye | [cc-claude-goodbye](https://github.com/nelsonlove/cc-claude-goodbye) |
+| claude-identity | [cc-claude-identity](https://github.com/nelsonlove/cc-claude-identity) |
+| claude-notebook | [cc-claude-notebook](https://github.com/nelsonlove/cc-claude-notebook) |
+| claude-threads | [cc-claude-threads](https://github.com/nelsonlove/cc-claude-threads) |
+| claude-tone | [cc-claude-tone](https://github.com/nelsonlove/cc-claude-tone) |
+| dayone | [cc-dayone](https://github.com/nelsonlove/cc-dayone) |
+| homebrew-audit | [cc-homebrew-audit](https://github.com/nelsonlove/cc-homebrew-audit) |
+| jd | [jd-cli](https://github.com/nelsonlove/jd-cli) |
+| mail | [cc-mail](https://github.com/nelsonlove/cc-mail) |
+| marked-preview | [cc-marked-preview](https://github.com/nelsonlove/cc-marked-preview) |
+| omnifocus | [omnifocus-py](https://github.com/nelsonlove/omnifocus-py) |
+| pim | [pim](https://github.com/nelsonlove/pim) |
+| safari | [safari-py](https://github.com/nelsonlove/safari-py) |
+| steipete-scripts | [cc-steipete-scripts](https://github.com/nelsonlove/cc-steipete-scripts) |
+| things | [things-py](https://github.com/nelsonlove/things-py) |
+| tomatobar | [cc-tomatobar](https://github.com/nelsonlove/cc-tomatobar) |
+| zotero | [cc-zotero](https://github.com/nelsonlove/cc-zotero) |
 
 Work-in-progress plugins that are not yet published live under
 [`incubator/`](incubator/).

@@ -45,7 +45,7 @@
 - `plugins/<name>/` — 14 dirs removed (`git rm`) after their extraction; `plugins/_archived/` removed in Task 0.
 - `incubator/` — new dir; receives `batch-issues`, `claude-notifications`, `imessage-research`, `org-roam-claude` (Task 4).
 - `README.md` — rewritten in Task 4 to describe a pure marketplace.
-- `scripts/extract-plugin.sh` — new helper implementing the per-plugin procedure (Task 2), reused by Task 3.
+- `scripts/extract-plugin.sh` — helper implementing the per-plugin procedure (Task 2), reused by Task 3. **NOTE (executed 2026-07-04): kept as a throwaway migration script outside the repo (in the session tmp dir), NOT committed — the final repo is a pure marketplace and does not carry migration tooling. To add a new plugin later, follow the "Adding or updating a plugin" steps in the repo README.**
 - New external repos: `nelsonlove/cc-*` (14), each with `.claude-plugin/plugin.json` at root.
 
 ---

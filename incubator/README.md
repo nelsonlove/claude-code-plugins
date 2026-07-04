@@ -1,13 +1,11 @@
 # incubator
 
 Work-in-progress plugins that are **not** published to the marketplace yet.
-
-Each plugin here is developed until it's ready, then extracted to its own
-standalone `cc-<name>` repository (history preserved via `git subtree split` or
-`git filter-repo`) and added to `.claude-plugin/marketplace.json` as a
-`github` source — the same shape as every published plugin.
-
 Nothing in this directory is installed by the marketplace.
+
+When one is ready, extract it to its own standalone `cc-<name>` repo and add a
+`github` source entry — see **[Adding or updating a plugin](../README.md#adding-or-updating-a-plugin)**
+in the top-level README for the canonical steps.
 
 Current occupants:
 
