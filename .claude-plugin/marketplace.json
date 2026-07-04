@@ -162,7 +162,11 @@
     },
     {
       "name": "claude-tone",
-      "source": "./plugins/claude-tone",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-claude-tone",
+        "ref": "v0.1.0"
+      },
       "description": "Unique pentatonic notification tone per session. Plays on Stop and Notification events.",
       "version": "0.1.0",
       "author": {
