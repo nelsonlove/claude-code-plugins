@@ -172,7 +172,11 @@
     },
     {
       "name": "tomatobar",
-      "source": "./plugins/tomatobar",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-tomatobar",
+        "ref": "v1.0.0"
+      },
       "description": "Control TomatoBar Pomodoro timer and query session state from Claude Code.",
       "version": "1.0.0",
       "author": {
@@ -228,7 +232,7 @@
     {
       "name": "calibre",
       "source": "./plugins/calibre",
-      "description": "Calibre ebook library curation — calibredb / ebook-meta / fetch-ebook-metadata / ebook-convert / calibre-server CLI knowledge skill plus slash commands for audit, backup, fix-metadata (OPF round-trip with ISBN sanity check), dedup, and bulk ingest. Captures 20 footguns including the wrong-ISBN-returns-confident-wrong-book trap and the corrupt-PDF embed crash.",
+      "description": "Calibre ebook library curation \u2014 calibredb / ebook-meta / fetch-ebook-metadata / ebook-convert / calibre-server CLI knowledge skill plus slash commands for audit, backup, fix-metadata (OPF round-trip with ISBN sanity check), dedup, and bulk ingest. Captures 20 footguns including the wrong-ISBN-returns-confident-wrong-book trap and the corrupt-PDF embed crash.",
       "version": "0.1.1",
       "author": {
         "name": "Nelson Love"
@@ -237,7 +241,7 @@
     {
       "name": "zotero",
       "source": "./plugins/zotero",
-      "description": "Zotero research library knowledge skill — zotero-cli / zotero-mcp (zotero-mcp-server). Captures local/web/hybrid library-access modes, the SQLite GUI-lock problem, the `zotero-cli config` secrets-exposure footgun (prints OPENAI_API_KEY/ZOTERO_API_KEY verbatim), and canonical workflows for search, DOI ingestion, annotation extraction, and BibTeX export.",
+      "description": "Zotero research library knowledge skill \u2014 zotero-cli / zotero-mcp (zotero-mcp-server). Captures local/web/hybrid library-access modes, the SQLite GUI-lock problem, the `zotero-cli config` secrets-exposure footgun (prints OPENAI_API_KEY/ZOTERO_API_KEY verbatim), and canonical workflows for search, DOI ingestion, annotation extraction, and BibTeX export.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
