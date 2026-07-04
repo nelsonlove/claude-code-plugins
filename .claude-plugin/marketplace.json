@@ -39,7 +39,11 @@
     },
     {
       "name": "backlog",
-      "source": "./plugins/backlog",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-backlog",
+        "ref": "v1.0.0"
+      },
       "description": "Backlog.md task tracker \u2014 manage markdown-based backlogs from Claude Code via MCP.",
       "version": "1.0.0",
       "author": {
