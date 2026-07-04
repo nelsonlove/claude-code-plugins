@@ -59,6 +59,20 @@
 **Interfaces:**
 - Produces: a clean `main` history with no `divorce`/family-name/secret strings, on which all later tasks build.
 
+> **EXECUTED 2026-07-04 — scope expanded during execution.** The full-history scan
+> surfaced sensitive content in FOUR history-only paths, not one:
+> `plugins/_archived/`, `docs/plans/2026-03-08-claude-notifications.md` (contained the
+> real cat-26 `26 Divorce/26.06 Legal email archive` path), historical
+> `plugins/claude-notifications/`, and `plugins/session-name/` (example label
+> `'divorce reorg'`). A separate finding — `"custody case"` in the **live public
+> `nelsonlove/pim` repo** (`docs/pim-matrix-ontology.md`) — was scrubbed in that repo too.
+> Actions taken: `git filter-repo` removing all four paths + replacing
+> `divorce email archive`/`divorce-email-cron`/`custody case`/`26 Divorce`/`Legal email archive`;
+> monorepo force-pushed `main` `4687365`→`1146c6b` (144→137 commits, all markers 0, tip intact);
+> pim unarchived → force-pushed `54e0f39`→`b4acbc3` (0 custody hits) → re-archived.
+> Worktree rebased onto rewritten `main`. The step-by-step below is the original plan; the
+> executed command set matches it with the expanded `--path` list.
+
 - [ ] **Step 1: Full-history scan for every sensitive term (record the hits)**
 
 Run from a full (non-worktree) clone of the monorepo:
@@ -295,26 +309,30 @@ Expected: `local left: []` (all 22 are external objects).
 **Files:**
 - Create: `incubator/` (moved WIP dirs), `incubator/README.md`
 - Remove: `plugins/jd/`, empty `plugins/`
-- Modify: `plugins/imessage-research/...` (scrub before move), `README.md`
+- Modify: `README.md`
 
-- [ ] **Step 1: Scrub the imessage-research example before it is ever committed**
+> **CORRECTED during execution (2026-07-04):** only `batch-issues` and `org-roam-claude`
+> are tracked WIP dirs on tip. `claude-notifications`, `imessage-research`, and
+> `session-name` are **NOT tracked** (untracked local-only in Nelson's working copy, or
+> already removed from history in Task 0) — so there is nothing in the repo to move or
+> scrub for them. The `matilda|tilly` example was never committed; Step 1 is therefore
+> a no-op on the git side (Nelson handles his local untracked copy separately).
 
-Replace the `matilda|tilly` example in `plugins/imessage-research/lib/cli.py` with a neutral one (e.g. `"invoice|receipt"`).
+- [ ] **Step 1: Confirm no `matilda|tilly` is tracked (no-op if clean)**
+
 ```bash
-git grep -n -i -e matilda -e tilly -- plugins/imessage-research || echo "clean"
+git grep -n -i -e matilda -e tilly -- plugins/ || echo "clean (nothing tracked)"
 ```
-Expected: `clean` after the edit.
+Expected: `clean (nothing tracked)`.
 
-- [ ] **Step 2: Move WIP dirs into incubator/**
+- [ ] **Step 2: Move the two tracked WIP dirs into incubator/**
 
 ```bash
 mkdir -p incubator
 git mv plugins/batch-issues incubator/batch-issues
-git mv plugins/claude-notifications incubator/claude-notifications
-git mv plugins/imessage-research incubator/imessage-research
 git mv plugins/org-roam-claude incubator/org-roam-claude
 ```
-Expected: four dirs now under `incubator/`.
+Expected: two dirs now under `incubator/`.
 
 - [ ] **Step 3: Confirm plugins/jd is a stale duplicate, then remove it**
 
