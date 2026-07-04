@@ -1,5 +1,6 @@
 {
   "name": "mail",
+  "version": "0.0.1",
   "description": "Email management via the Himalaya CLI — list, read, write, reply, forward, search, and organize emails from the terminal using IMAP/SMTP.",
   "author": {
     "name": "nelson"
