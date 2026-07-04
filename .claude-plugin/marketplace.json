@@ -52,7 +52,11 @@
     },
     {
       "name": "dayone",
-      "source": "./plugins/dayone",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-dayone",
+        "ref": "v1.0.0"
+      },
       "description": "Day One journaling \u2014 create, read, and update journal entries via MCP.",
       "version": "1.0.0",
       "author": {
