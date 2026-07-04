@@ -1,8 +1,0 @@
-{
-  "name": "claude-goodbye",
-  "version": "0.2.0",
-  "description": "Agent self-termination with configurable teardown. /teardown runs a user-configured pre-shutdown sequence (persist session state, finalize live docs, close handoffs); /goodbye runs teardown then SIGTERMs own PID. Refuses to kill if a required teardown step failed.",
-  "author": {
-    "name": "Nelson Love"
-  }
-}

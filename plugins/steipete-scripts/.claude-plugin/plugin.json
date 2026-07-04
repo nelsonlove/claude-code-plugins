@@ -1,8 +1,0 @@
-{
-  "name": "steipete-scripts",
-  "description": "Skills ported from steipete/agent-scripts (https://github.com/steipete/agent-scripts). Attribution: Peter Steinberger (@steipete).",
-  "author": {
-    "name": "nelson",
-    "upstream": "https://github.com/steipete/agent-scripts"
-  }
-}
