@@ -163,7 +163,11 @@
     },
     {
       "name": "claude-goodbye",
-      "source": "./plugins/claude-goodbye",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-claude-goodbye",
+        "ref": "v0.2.0"
+      },
       "description": "Agent self-termination with configurable /teardown sequence + /goodbye (SIGTERM to own PID). Depends on claude-identity.",
       "version": "0.2.0",
       "author": {
