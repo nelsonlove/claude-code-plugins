@@ -298,6 +298,19 @@
       "author": {
         "name": "Nelson Love"
       }
+    },
+    {
+      "name": "imessage-research",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/cc-imessage-research",
+        "ref": "v0.1.0"
+      },
+      "description": "Search and curate iMessage history \u2014 decodes attributedBody typedstream blobs, resolves handles via multi-source AddressBook, expands hits into conversation clusters. Companion to the imessage plugin.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
     }
   ]
 }
