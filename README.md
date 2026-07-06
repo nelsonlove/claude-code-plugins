@@ -49,6 +49,7 @@ Versions are not duplicated here — each plugin's version lives in its
 | claude-tone | [cc-claude-tone](https://github.com/nelsonlove/cc-claude-tone) |
 | dayone | [cc-dayone](https://github.com/nelsonlove/cc-dayone) |
 | homebrew-audit | [cc-homebrew-audit](https://github.com/nelsonlove/cc-homebrew-audit) |
+| imessage-research | [cc-imessage-research](https://github.com/nelsonlove/cc-imessage-research) |
 | jd | [jd-cli](https://github.com/nelsonlove/jd-cli) |
 | mail | [cc-mail](https://github.com/nelsonlove/cc-mail) |
 | marked-preview | [cc-marked-preview](https://github.com/nelsonlove/cc-marked-preview) |
