@@ -77,9 +77,8 @@ Work-in-progress plugins that are not yet published live under
    - subdir repo: `{"source":"git-subdir","url":"…","path":"plugin/claude-code","ref":"…"}`
    Keep the entry's `version` in sync with the `ref` tag.
 
-The design and migration history for this split live in
-[`docs/superpowers/specs/`](docs/superpowers/specs/) and
-[`docs/superpowers/plans/`](docs/superpowers/plans/).
+The design spec and implementation plan for the per-repo split are kept in the
+maintainer's notes vault, outside this repository.
 
 ## Author
 
