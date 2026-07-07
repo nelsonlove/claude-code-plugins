@@ -51,14 +51,15 @@ Versions are not duplicated here — each plugin's version lives in its
 | homebrew-audit | [cc-homebrew-audit](https://github.com/nelsonlove/cc-homebrew-audit) |
 | imessage-research | [cc-imessage-research](https://github.com/nelsonlove/cc-imessage-research) |
 | jd | [jd-cli](https://github.com/nelsonlove/jd-cli) |
+| jd-scan | [cc-jd-scan](https://github.com/nelsonlove/cc-jd-scan) |
 | mail | [cc-mail](https://github.com/nelsonlove/cc-mail) |
 | marked-preview | [cc-marked-preview](https://github.com/nelsonlove/cc-marked-preview) |
 | omnifocus | [omnifocus-py](https://github.com/nelsonlove/omnifocus-py) |
 | pim | [pim](https://github.com/nelsonlove/pim) |
 | safari | [safari-py](https://github.com/nelsonlove/safari-py) |
-| steipete-scripts | [cc-steipete-scripts](https://github.com/nelsonlove/cc-steipete-scripts) |
 | things | [things-py](https://github.com/nelsonlove/things-py) |
 | tomatobar | [cc-tomatobar](https://github.com/nelsonlove/cc-tomatobar) |
+| vault-mcp-connect | [obsidian-vault-mcp-plugin](https://github.com/nelsonlove/obsidian-vault-mcp-plugin) |
 | zotero | [cc-zotero](https://github.com/nelsonlove/cc-zotero) |
 
 Work-in-progress plugins that are not yet published live under

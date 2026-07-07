@@ -19,19 +19,6 @@
       }
     },
     {
-      "name": "steipete-scripts",
-      "source": {
-        "source": "github",
-        "repo": "nelsonlove/cc-steipete-scripts",
-        "ref": "v0.0.1"
-      },
-      "description": "Skills ported from steipete/agent-scripts. Attribution: Peter Steinberger (@steipete).",
-      "version": "0.0.1",
-      "author": {
-        "name": "Nelson Love"
-      }
-    },
-    {
       "name": "jd",
       "source": {
         "source": "git-subdir",
