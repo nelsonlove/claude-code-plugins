@@ -56,7 +56,6 @@ Versions are not duplicated here — each plugin's version lives in its
 | omnifocus | [omnifocus-py](https://github.com/nelsonlove/omnifocus-py) |
 | pim | [pim](https://github.com/nelsonlove/pim) |
 | safari | [safari-py](https://github.com/nelsonlove/safari-py) |
-| steipete-scripts | [cc-steipete-scripts](https://github.com/nelsonlove/cc-steipete-scripts) |
 | things | [things-py](https://github.com/nelsonlove/things-py) |
 | tomatobar | [cc-tomatobar](https://github.com/nelsonlove/cc-tomatobar) |
 | zotero | [cc-zotero](https://github.com/nelsonlove/cc-zotero) |
