@@ -320,7 +320,20 @@
         "repo": "nelsonlove/cc-jd-scan",
         "ref": "v0.1.0"
       },
-      "description": "Scan triage — Apple Vision OCR, segment multi-page scans, file each document into paperless-ngx (text-layer preserved) + the JD capture inbox.",
+      "description": "Scan triage \u2014 Apple Vision OCR, segment multi-page scans, file each document into paperless-ngx (text-layer preserved) + the JD capture inbox.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nelson Love"
+      }
+    },
+    {
+      "name": "agent-approvals",
+      "source": {
+        "source": "github",
+        "repo": "nelsonlove/agent-approvals",
+        "ref": "v0.1.0"
+      },
+      "description": "Durable human approvals for coding agents \u2014 file a Pickle request and resume the agent (warm in-session or cold via Tickle) when you answer. Built on Pickle/Tickle/ops.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
