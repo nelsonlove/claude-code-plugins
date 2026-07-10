@@ -304,7 +304,7 @@
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/nelsonlove/obsidian-vault-mcp-plugin.git",
-        "path": "cc-plugin",
+        "path": "packages/plugin/cc-plugin",
         "ref": "main"
       },
       "description": "SessionStart health check + /vault-mcp-status for the vault-mcp Obsidian bridge (surfaces when the mcp__vault-mcp__* tools are unavailable).",
