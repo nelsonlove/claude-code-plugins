@@ -1,0 +1,13 @@
+{
+  "description": "Establishes when agents should route decisions to Pickle (act / ask in chat / file an approval).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/approval-policy.sh", "timeout": 5 }
+        ]
+      }
+    ]
+  }
+}

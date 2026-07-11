@@ -1,0 +1,16 @@
+{
+  "name": "agent-approvals",
+  "version": "0.2.0",
+  "description": "Durable human approvals for coding agents that resume the agent \u2014 warm in-session or cold via Tickle \u2014 when you answer.",
+  "author": {
+    "name": "Nelson Love"
+  },
+  "repository": "https://github.com/nelsonlove/claude-code-plugins",
+  "keywords": [
+    "pickle",
+    "tickle",
+    "approvals",
+    "human-in-the-loop",
+    "resume"
+  ]
+}

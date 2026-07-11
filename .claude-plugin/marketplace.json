@@ -39,7 +39,7 @@
         "repo": "nelsonlove/cc-backlog",
         "ref": "v1.0.0"
       },
-      "description": "Backlog.md task tracker — manage markdown-based backlogs from Claude Code via MCP.",
+      "description": "Backlog.md task tracker \u2014 manage markdown-based backlogs from Claude Code via MCP.",
       "version": "1.0.0",
       "author": {
         "name": "Nelson Love"
@@ -52,7 +52,7 @@
         "repo": "nelsonlove/cc-dayone",
         "ref": "v1.0.0"
       },
-      "description": "Day One journaling — create, read, and update journal entries via MCP.",
+      "description": "Day One journaling \u2014 create, read, and update journal entries via MCP.",
       "version": "1.0.0",
       "author": {
         "name": "Nelson Love"
@@ -66,7 +66,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Things.app task management — query tasks, projects, areas, and tags.",
+      "description": "Things.app task management \u2014 query tasks, projects, areas, and tags.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
@@ -80,7 +80,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "OmniFocus task management — create, update, complete, and query tasks and projects via MCP.",
+      "description": "OmniFocus task management \u2014 create, update, complete, and query tasks and projects via MCP.",
       "version": "3.0.0",
       "author": {
         "name": "Nelson Love"
@@ -147,7 +147,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Apple Notes integration — read, create, search, and triage notes via MCP.",
+      "description": "Apple Notes integration \u2014 read, create, search, and triage notes via MCP.",
       "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
@@ -161,7 +161,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Apple Mail — search, triage, archive, and draft replies from the command line.",
+      "description": "Apple Mail \u2014 search, triage, archive, and draft replies from the command line.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
@@ -227,7 +227,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Safari bookmarks and reading list — search, export, and manage.",
+      "description": "Safari bookmarks and reading list \u2014 search, export, and manage.",
       "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
@@ -241,7 +241,7 @@
         "path": "plugin/claude-code",
         "ref": "main"
       },
-      "description": "Personal information management — unified graph across notes, tasks, calendar, email, contacts, and more.",
+      "description": "Personal information management \u2014 unified graph across notes, tasks, calendar, email, contacts, and more.",
       "version": "1.0.0",
       "author": {
         "name": "Nelson Love"
@@ -267,7 +267,7 @@
         "repo": "nelsonlove/cc-calibre",
         "ref": "v0.1.2"
       },
-      "description": "Calibre ebook library curation — calibredb / ebook-meta / fetch-ebook-metadata / ebook-convert / calibre-server CLI knowledge skill plus slash commands for audit, backup, fix-metadata (OPF round-trip with ISBN sanity check), dedup, and bulk ingest. Captures 20 footguns including the wrong-ISBN-returns-confident-wrong-book trap and the corrupt-PDF embed crash.",
+      "description": "Calibre ebook library curation \u2014 calibredb / ebook-meta / fetch-ebook-metadata / ebook-convert / calibre-server CLI knowledge skill plus slash commands for audit, backup, fix-metadata (OPF round-trip with ISBN sanity check), dedup, and bulk ingest. Captures 20 footguns including the wrong-ISBN-returns-confident-wrong-book trap and the corrupt-PDF embed crash.",
       "version": "0.1.2",
       "author": {
         "name": "Nelson Love"
@@ -280,7 +280,7 @@
         "repo": "nelsonlove/cc-zotero",
         "ref": "v0.1.0"
       },
-      "description": "Zotero research library knowledge skill — zotero-cli / zotero-mcp (zotero-mcp-server). Captures local/web/hybrid library-access modes, the SQLite GUI-lock problem, the `zotero-cli config` secrets-exposure footgun (prints OPENAI_API_KEY/ZOTERO_API_KEY verbatim), and canonical workflows for search, DOI ingestion, annotation extraction, and BibTeX export.",
+      "description": "Zotero research library knowledge skill \u2014 zotero-cli / zotero-mcp (zotero-mcp-server). Captures local/web/hybrid library-access modes, the SQLite GUI-lock problem, the `zotero-cli config` secrets-exposure footgun (prints OPENAI_API_KEY/ZOTERO_API_KEY verbatim), and canonical workflows for search, DOI ingestion, annotation extraction, and BibTeX export.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
@@ -293,7 +293,7 @@
         "repo": "nelsonlove/cc-imessage-research",
         "ref": "v0.1.0"
       },
-      "description": "Search and curate iMessage history — decodes attributedBody typedstream blobs, resolves handles via multi-source AddressBook, expands hits into conversation clusters. Companion to the imessage plugin.",
+      "description": "Search and curate iMessage history \u2014 decodes attributedBody typedstream blobs, resolves handles via multi-source AddressBook, expands hits into conversation clusters. Companion to the imessage plugin.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
@@ -321,7 +321,7 @@
         "path": "claude-code",
         "ref": "main"
       },
-      "description": "Bootstrap for vault-skills — ships the new-skill authoring skill + conventions. Agents/skills are populated locally by the vault-skills Obsidian exporter (github.com/nelsonlove/vault-skills).",
+      "description": "Bootstrap for vault-skills \u2014 ships the new-skill authoring skill + conventions. Agents/skills are populated locally by the vault-skills Obsidian exporter (github.com/nelsonlove/vault-skills).",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
@@ -334,7 +334,7 @@
         "repo": "nelsonlove/cc-jd-scan",
         "ref": "v0.1.0"
       },
-      "description": "Scan triage — Apple Vision OCR, segment multi-page scans, file each document into paperless-ngx (text-layer preserved) + the JD capture inbox.",
+      "description": "Scan triage \u2014 Apple Vision OCR, segment multi-page scans, file each document into paperless-ngx (text-layer preserved) + the JD capture inbox.",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
@@ -343,12 +343,13 @@
     {
       "name": "agent-approvals",
       "source": {
-        "source": "github",
-        "repo": "nelsonlove/agent-approvals",
-        "ref": "v0.1.0"
+        "source": "git-subdir",
+        "url": "https://github.com/nelsonlove/claude-code-plugins.git",
+        "path": "agent-approvals",
+        "ref": "main"
       },
-      "description": "Durable human approvals for coding agents — file a Pickle request and resume the agent (warm in-session or cold via Tickle) when you answer. Built on Pickle/Tickle/ops.",
-      "version": "0.1.0",
+      "description": "Durable human approvals for coding agents \u2014 file a Pickle request and resume the agent (warm in-session or cold via Tickle) when you answer. Built on Pickle/Tickle/ops.",
+      "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
       }

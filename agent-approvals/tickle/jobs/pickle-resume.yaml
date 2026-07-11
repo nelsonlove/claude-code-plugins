@@ -1,0 +1,14 @@
+version: 1
+id: pickle-resume
+name: Pickle Resume
+status: active
+
+triggers:
+  - type: script
+    every: 30s
+    command: ["@config/scripts/pickle-resume/has-answers.sh"]
+    timeout: 20s
+
+run:
+  command: ["@config/scripts/pickle-resume/resume.sh"]
+  timeout: 2h
