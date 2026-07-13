@@ -344,8 +344,8 @@
       "name": "agent-approvals",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/nelsonlove/claude-code-plugins.git",
-        "path": "agent-approvals",
+        "url": "https://github.com/nelsonlove/agent-stack.git",
+        "path": "plugins/agent-approvals",
         "ref": "main"
       },
       "description": "Durable human approvals for coding agents \u2014 file a Pickle request and resume the agent (warm in-session or cold via Tickle) when you answer. Built on Pickle/Tickle/ops.",
