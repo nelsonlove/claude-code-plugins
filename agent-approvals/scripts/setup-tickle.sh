@@ -10,7 +10,15 @@ command -v tickle >/dev/null 2>&1 || { echo "error: 'tickle' not on PATH — ins
 
 mkdir -p "$TCFG/jobs" "$TCFG/scripts/pickle-resume" \
          "$HOME/.claude/pickle-state/claims" "$HOME/.claude/pickle-state/processed"
-cp "$ROOT/tickle/jobs/pickle-resume.yaml" "$TCFG/jobs/pickle-resume.yaml"
+# Don't clobber a locally-customized job (e.g. one gated to a single host via a
+# hostname trigger). Only install the plugin's default when none exists.
+if [ -f "$TCFG/jobs/pickle-resume.yaml" ]; then
+  echo "pickle-resume.yaml already present — keeping your copy (delete it to reinstall the plugin default)."
+else
+  cp "$ROOT/tickle/jobs/pickle-resume.yaml" "$TCFG/jobs/pickle-resume.yaml"
+fi
+# Scripts are the plugin's implementation (has-answers.sh / resume.sh) — refresh
+# them; a local gate wrapper (e.g. check.sh) lives alongside and is untouched.
 cp "$ROOT/tickle/scripts/pickle-resume/"*.sh "$TCFG/scripts/pickle-resume/"
 chmod +x "$TCFG/scripts/pickle-resume/"*.sh
 
