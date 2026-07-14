@@ -317,11 +317,11 @@
       "name": "vault-skills",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/nelsonlove/vault-skills.git",
+        "url": "https://github.com/nelsonlove/obsidian-vault-skills.git",
         "path": "claude-code",
         "ref": "main"
       },
-      "description": "Bootstrap for vault-skills \u2014 ships the new-skill authoring skill + conventions. Agents/skills are populated locally by the vault-skills Obsidian exporter (github.com/nelsonlove/vault-skills).",
+      "description": "Bootstrap for vault-skills \u2014 ships the new-skill authoring skill + conventions. Agents/skills are populated locally by the vault-skills Obsidian exporter (github.com/nelsonlove/obsidian-vault-skills).",
       "version": "0.1.0",
       "author": {
         "name": "Nelson Love"
