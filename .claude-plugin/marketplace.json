@@ -349,7 +349,7 @@
         "ref": "main"
       },
       "description": "Durable human approvals for coding agents \u2014 file a Pickle request and resume the agent (warm in-session or cold via Tickle) when you answer. Built on Pickle/Tickle/ops.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": {
         "name": "Nelson Love"
       }
