@@ -300,20 +300,6 @@
       }
     },
     {
-      "name": "vault-mcp-connect",
-      "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/nelsonlove/obsidian-vault-mcp-plugin.git",
-        "path": "packages/plugin/cc-plugin",
-        "ref": "main"
-      },
-      "description": "SessionStart health check + /vault-mcp-status for the vault-mcp Obsidian bridge, plus the record-class write guard (PreToolUse: refuses non-append Bash/MCP writes under 'Machinery record/').",
-      "version": "0.2.0",
-      "author": {
-        "name": "Nelson Love"
-      }
-    },
-    {
       "name": "vault-skills",
       "source": {
         "source": "git-subdir",
