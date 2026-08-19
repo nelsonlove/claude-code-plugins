@@ -307,8 +307,8 @@
         "path": "packages/plugin/cc-plugin",
         "ref": "main"
       },
-      "description": "SessionStart health check + /vault-mcp-status for the vault-mcp Obsidian bridge (surfaces when the mcp__vault-mcp__* tools are unavailable).",
-      "version": "0.1.0",
+      "description": "SessionStart health check + /vault-mcp-status for the vault-mcp Obsidian bridge, plus the record-class write guard (PreToolUse: refuses non-append Bash/MCP writes under 'Machinery record/').",
+      "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
       }
