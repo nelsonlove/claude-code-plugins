@@ -301,14 +301,9 @@
     },
     {
       "name": "vault-skills",
-      "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/nelsonlove/obsidian-vault-skills.git",
-        "path": "claude-code",
-        "ref": "main"
-      },
-      "description": "Bootstrap for vault-skills \u2014 ships the new-skill authoring skill + conventions. Agents/skills are populated locally by the vault-skills Obsidian exporter (github.com/nelsonlove/obsidian-vault-skills).",
-      "version": "0.1.0",
+      "source": "./plugins/vault-skills",
+      "description": "Landing plugin for skills and agents authored as vault notes \u2014 ships the static new-skill authoring skill and its conventions. Its skills/ and agents/ are populated by the skills satellite of obsidian-mcp-suite (packages/skills, @vault-mcp/skills), which writes them into the installed copy; the plugin ships no MCP server of its own.",
+      "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
       }
