@@ -8,7 +8,9 @@ The exporter is the **skills satellite of [obsidian-mcp-suite](https://github.co
 
 - `.claude-plugin/plugin.json` — the manifest. Static, tracked.
 - `skills/new-skill/` — the static authoring skill and its bundled `conventions.md`. Tracked; this is the plugin's own payload, not vault output.
-- `skills/`, `agents/`, `hooks/` — landing directories the exporter writes into. Their generated contents are git-ignored, along with the `.vault-skills-manifest.json` the exporter drops beside them; only the `.gitkeep` placeholders are tracked, so a fresh checkout already has the directories the exporter expects.
+- `skills/`, `agents/`, `commands/`, `hooks/` — landing directories the exporter writes into. Their generated contents are git-ignored, along with the `.vault-skills-manifest.json` the exporter drops beside them; only the `.gitkeep` placeholders are tracked, so a fresh checkout already has the directories the exporter expects.
+
+A vault note becomes one of four things, and each lands in its own directory: a `skill` in `skills/<name>/SKILL.md`, an `agent` in `agents/<name>.md`, a `command` in `commands/<name>.md`, and a `policy` in no file at all — its body is injected into the prompts of the agents it scopes. `hooks/hooks.json` is written too: it is not a note type, and the bundled `conventions.md` does not describe it, but the exporter emits it — the installed copy carries one, listed in its own `.vault-skills-manifest.json`.
 
 Do not hand-edit the generated files. The source of truth is the vault note; edit it and re-export.
 
