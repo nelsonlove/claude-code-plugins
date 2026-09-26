@@ -59,7 +59,6 @@ Versions are not duplicated here — each plugin's version lives in its
 | safari | [safari-py](https://github.com/nelsonlove/safari-py) |
 | things | [things-py](https://github.com/nelsonlove/things-py) |
 | tomatobar | [cc-tomatobar](https://github.com/nelsonlove/cc-tomatobar) |
-| vault-mcp-connect | [obsidian-vault-mcp-plugin](https://github.com/nelsonlove/obsidian-vault-mcp-plugin) |
 | zotero | [cc-zotero](https://github.com/nelsonlove/cc-zotero) |
 
 Work-in-progress plugins that are not yet published live under
