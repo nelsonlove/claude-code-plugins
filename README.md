@@ -28,7 +28,7 @@ used, and the marketplace mixes them freely:
 
 - **`github`** — the repo *is* the plugin (`.claude-plugin/plugin.json` at its
   root). These are the `cc-*` repos.
-- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo that also ships something else. Eight sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos, plus `jd` and `pim`); `vault-skills` sits at `claude-code/`, and `agent-approvals` at `plugins/agent-approvals/` in a repo that holds several plugins.
+- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo. Eight sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos, plus `jd` and `pim`); `vault-skills` sits at `claude-code/`, and `agent-approvals` at `plugins/agent-approvals/`, beside one other plugin in the same repo.
 
 Versions are not duplicated here — each plugin's version lives in its
 `plugin.json` and the manifest's pinned `ref` tag.
