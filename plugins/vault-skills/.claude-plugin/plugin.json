@@ -1,7 +1,7 @@
 {
   "name": "vault-skills",
-  "description": "Landing plugin for skills and agents exported from an Obsidian (Johnny Decimal) vault. Its skills/ and agents/ are populated by the vault-skills Obsidian plugin (../obsidian); loaded by Claude Code in place.",
-  "version": "0.1.0",
+  "description": "Landing plugin for the skills and agents exported from Nelson's Obsidian (Johnny Decimal) vault. Its skills/ and agents/ are populated by the skills satellite of obsidian-mcp-suite (packages/skills, @vault-mcp/skills), which writes them here; Claude Code loads them in place. The plugin ships no MCP server of its own.",
+  "version": "0.2.0",
   "author": {
     "name": "Nelson",
     "email": "nelson.love@me.com"
