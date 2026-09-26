@@ -28,15 +28,14 @@ used, and the marketplace mixes them freely:
 
 - **`github`** — the repo *is* the plugin (`.claude-plugin/plugin.json` at its
   root). These are the `cc-*` repos.
-- **`git-subdir`** — the plugin lives at `plugin/claude-code/` inside a larger
-  repo that also ships a CLI/Python package (the `*-py` repos, plus `jd` and
-  `pim`).
+- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo. Eight sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos, plus `jd` and `pim`); `vault-skills` sits at `claude-code/`, and `agent-approvals` at `plugins/agent-approvals/`, beside one other plugin in the same repo.
 
 Versions are not duplicated here — each plugin's version lives in its
 `plugin.json` and the manifest's pinned `ref` tag.
 
 | Plugin | Repository |
 |--------|------------|
+| agent-approvals | [agent-stack](https://github.com/nelsonlove/agent-stack) |
 | apple-mail | [apple-mail-py](https://github.com/nelsonlove/apple-mail-py) |
 | apple-music | [apple-music-py](https://github.com/nelsonlove/apple-music-py) |
 | apple-notes | [apple-notes-py](https://github.com/nelsonlove/apple-notes-py) |
@@ -59,7 +58,7 @@ Versions are not duplicated here — each plugin's version lives in its
 | safari | [safari-py](https://github.com/nelsonlove/safari-py) |
 | things | [things-py](https://github.com/nelsonlove/things-py) |
 | tomatobar | [cc-tomatobar](https://github.com/nelsonlove/cc-tomatobar) |
-| vault-mcp-connect | [obsidian-vault-mcp-plugin](https://github.com/nelsonlove/obsidian-vault-mcp-plugin) |
+| vault-skills | [obsidian-vault-skills](https://github.com/nelsonlove/obsidian-vault-skills) |
 | zotero | [cc-zotero](https://github.com/nelsonlove/cc-zotero) |
 
 Work-in-progress plugins that are not yet published live under
