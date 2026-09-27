@@ -28,7 +28,7 @@ used, and the marketplace mixes them freely:
 
 - **`github`** — the repo *is* the plugin (`.claude-plugin/plugin.json` at its
   root). These are the `cc-*` repos.
-- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo. Eight sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos, plus `jd` and `pim`); `vault-skills` sits at `claude-code/`, and `agent-approvals` at `plugins/agent-approvals/`, beside one other plugin in the same repo.
+- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo. Eight sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos, plus `jd` and `pim`); `agent-approvals` sits at `plugins/agent-approvals/`, beside one other plugin in the same repo.
 
 Versions are not duplicated here — each plugin's version lives in its
 `plugin.json` and the manifest's pinned `ref` tag.
@@ -58,7 +58,6 @@ Versions are not duplicated here — each plugin's version lives in its
 | safari | [safari-py](https://github.com/nelsonlove/safari-py) |
 | things | [things-py](https://github.com/nelsonlove/things-py) |
 | tomatobar | [cc-tomatobar](https://github.com/nelsonlove/cc-tomatobar) |
-| vault-skills | [obsidian-vault-skills](https://github.com/nelsonlove/obsidian-vault-skills) |
 | zotero | [cc-zotero](https://github.com/nelsonlove/cc-zotero) |
 
 Work-in-progress plugins that are not yet published live under
