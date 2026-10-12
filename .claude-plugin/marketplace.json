@@ -157,12 +157,12 @@
       "name": "apple-mail",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/nelsonlove/apple-mail-py.git",
-        "path": "plugin/claude-code",
+        "url": "https://github.com/nelsonlove/macos-tools.git",
+        "path": "packages/apple-mail/plugin/claude-code",
         "ref": "main"
       },
-      "description": "Apple Mail \u2014 search, triage, archive, and draft replies from the command line.",
-      "version": "0.1.0",
+      "description": "Apple Mail, read-only: search mail metadata and triage unread. No bodies, no writes, no AppleScript (message bodies go through email-context).",
+      "version": "0.2.0",
       "author": {
         "name": "Nelson Love"
       }
