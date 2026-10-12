@@ -36,7 +36,7 @@ Versions are not duplicated here — each plugin's version lives in its
 | Plugin | Repository |
 |--------|------------|
 | agent-approvals | [agent-stack](https://github.com/nelsonlove/agent-stack) |
-| apple-mail | [apple-mail-py](https://github.com/nelsonlove/apple-mail-py) |
+| apple-mail | [macos-tools](https://github.com/nelsonlove/macos-tools) (`packages/apple-mail`, private) |
 | apple-music | [apple-music-py](https://github.com/nelsonlove/apple-music-py) |
 | apple-notes | [apple-notes-py](https://github.com/nelsonlove/apple-notes-py) |
 | backlog | [cc-backlog](https://github.com/nelsonlove/cc-backlog) |
