@@ -28,10 +28,10 @@ used, and the marketplace mixes them freely:
 
 - **`github`** — the repo *is* the plugin (`.claude-plugin/plugin.json` at its
   root). These are the `cc-*` repos.
-- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo. Most sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos and `pim`); `agent-approvals` sits at `plugins/agent-approvals/`, beside one other plugin in the same repo.
+- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo. Seven sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos, plus `pim`); `agent-approvals` sits at `plugins/agent-approvals/`, beside one other plugin in the same repo.
 
 Versions are not duplicated here — each plugin's version lives in its
-`plugin.json` (and, where the manifest pins one, its `ref` tag; most entries track `main`).
+`plugin.json` and the manifest's pinned `ref` tag.
 
 | Plugin | Repository |
 |--------|------------|
