@@ -28,7 +28,7 @@ used, and the marketplace mixes them freely:
 
 - **`github`** — the repo *is* the plugin (`.claude-plugin/plugin.json` at its
   root). These are the `cc-*` repos.
-- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo. Eight sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos, plus `jd` and `pim`); `agent-approvals` sits at `plugins/agent-approvals/`, beside one other plugin in the same repo.
+- **`git-subdir`** — the plugin lives in a subdirectory of a larger repo. Seven sit at `plugin/claude-code/` beside a CLI or Python package (the `*-py` repos, plus `pim`); `agent-approvals` sits at `plugins/agent-approvals/`, beside one other plugin in the same repo.
 
 Versions are not duplicated here — each plugin's version lives in its
 `plugin.json` and the manifest's pinned `ref` tag.
@@ -49,7 +49,6 @@ Versions are not duplicated here — each plugin's version lives in its
 | dayone | [cc-dayone](https://github.com/nelsonlove/cc-dayone) |
 | homebrew-audit | [cc-homebrew-audit](https://github.com/nelsonlove/cc-homebrew-audit) |
 | imessage-research | [cc-imessage-research](https://github.com/nelsonlove/cc-imessage-research) |
-| jd | [jd-cli](https://github.com/nelsonlove/jd-cli) |
 | jd-scan | [cc-jd-scan](https://github.com/nelsonlove/cc-jd-scan) |
 | mail | [cc-mail](https://github.com/nelsonlove/cc-mail) |
 | marked-preview | [cc-marked-preview](https://github.com/nelsonlove/cc-marked-preview) |
