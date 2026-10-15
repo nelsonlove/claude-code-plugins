@@ -92,7 +92,7 @@
         "repo": "nelsonlove/cc-claude-identity",
         "ref": "v0.1.4"
       },
-      "description": "Cross-session identity substrate: session handle resolution, scope/tag CRUD, match function. Foundation for claude-threads, jd-context, and other plugins that need to know which sessions are alive and what they're interested in.",
+      "description": "Cross-session identity substrate: session handle resolution, scope/tag CRUD, match function. Foundation for claude-threads and other plugins that need to know which sessions are alive and what they're interested in.",
       "version": "0.1.4",
       "author": {
         "name": "Nelson Love"
@@ -240,7 +240,7 @@
         "repo": "nelsonlove/cc-claude-notebook",
         "ref": "v0.9.0"
       },
-      "description": "Agent notebook for the JD vault. `/notebook` saves each session as a per-session note in `03.13 Agent notebook/YYYY-MM/`; `/notebook-rollup` generates weekly narrative rollups (`rollups/Agent rollup for YYYY-WNN.md`) for completed weeks.",
+      "description": "Agent notebook for the JD vault. `/notebook` saves each session as a per-session note in `03.04 Artifacts & records/Agent notebook/YYYY-MM/`; `/notebook-rollup` generates weekly narrative rollups (`rollups/Agent rollup for YYYY-WNN.md`) for completed weeks.",
       "version": "0.9.0",
       "author": {
         "name": "Nelson Love"
