@@ -19,20 +19,6 @@
       }
     },
     {
-      "name": "jd",
-      "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/nelsonlove/jd-cli.git",
-        "path": "plugin/claude-code",
-        "ref": "main"
-      },
-      "description": "Johnny Decimal filing system integration for Claude Code.",
-      "version": "0.1.0",
-      "author": {
-        "name": "Nelson Love"
-      }
-    },
-    {
       "name": "backlog",
       "source": {
         "source": "github",
